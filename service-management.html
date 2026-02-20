@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Management – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;  
+            padding: 40px 20px;        
+            margin: 0;
+            overflow-y: auto;          
+        }
+        
+        .admin-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 900px;
+            padding: 40px;
+            margin: 20px auto;         
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #333;
+            font-size: 20px;
+            margin: 40px 0 20px;       
+        }
+        
+        h2:first-of-type {
+            margin-top: 20px;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .required {
+            color: #dc2626;
+            margin-left: 2px;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        
+        .table-container {
+            overflow-x: auto;         
+            border-radius: 12px;
+            border: 1px solid #eee;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            min-width: 600px;            
+        }
+        
+        th {
+            background: #f8f9fa;
+            color: #333;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #eee;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            color: #666;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .priority-high {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .priority-medium {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        
+        .priority-low {
+            background: #d1fae5;
+            color: #16a34a;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            margin: 0 4px;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        
+        .action-btn.delete:hover {
+            border-color: #dc2626;
+            color: #dc2626;
+        }
+        
+        .field-error {
+            color: #dc2626;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .field-error.visible {
+            display: block;
+        }
+        
+        .field-hint {
+            color: #666;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 10px;
+            }
+            
+            .admin-card {
+                padding: 20px;
+            }
+            
+            .form-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-card">
+        <h1>Service Management</h1>
+        <p class="subtitle">Create and manage your queue services</p>
+        
+        <!-- Add New Service Form -->
+        <div class="form-section">
+            <h2 style="margin-top: 0;">Add New Service</h2>
+            
+            <form id="serviceForm" onsubmit="return validateForm()">
+                <div class="form-group">
+                    <label>Service Name <span class="required">*</span></label>
+                    <input type="text" id="serviceName" maxlength="100" placeholder="e.g., Bank Teller">
+                    <span class="field-hint">Maximum 100 characters</span>
+                    <div class="field-error" id="nameError">Service name is required</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description <span class="required">*</span></label>
+                    <textarea id="description" rows="3" placeholder="Describe what this service offers..."></textarea>
+                    <div class="field-error" id="descError">Description is required</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Expected Duration (minutes) <span class="required">*</span></label>
+                    <input type="number" id="duration" min="1" placeholder="e.g., 15">
+                    <div class="field-error" id="durationError">Please enter a valid duration</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Priority Level <span class="required">*</span></label>
+                    <select id="priority">
+                        <option value="">Select priority level</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                    <div class="field-error" id="priorityError">Please select a priority level</div>
+                </div>
+                
+                <button type="submit" class="btn-primary">Create Service</button>
+            </form>
+        </div>
+        
+        <!-- Existing Services -->
+        <h2>Existing Services</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service Name</th>
+                        <th>Description</th>
+                        <th>Duration</th>
+                        <th>Priority</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Bank Teller</td>
+                        <td>General banking transactions</td>
+                        <td>5 min</td>
+                        <td><span class="priority-badge priority-high">High</span></td>
+                        <td>
+                            <button class="action-btn" onclick="alert('Edit service (mock)')">Edit</button>
+                            <button class="action-btn delete" onclick="alert('Delete service (mock)')">Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Customer Support</td>
+                        <td>Account questions and issues</td>
+                        <td>10 min</td>
+                        <td><span class="priority-badge priority-medium">Medium</span></td>
+                        <td>
+                            <button class="action-btn" onclick="alert('Edit service (mock)')">Edit</button>
+                            <button class="action-btn delete" onclick="alert('Delete service (mock)')">Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Pharmacy Pickup</td>
+                        <td>Prescription pickup and consultation</td>
+                        <td>8 min</td>
+                        <td><span class="priority-badge priority-low">Low</span></td>
+                        <td>
+                            <button class="action-btn" onclick="alert('Edit service (mock)')">Edit</button>
+                            <button class="action-btn delete" onclick="alert('Delete service (mock)')">Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Technical Support</td>
+                        <td>IT and technical assistance</td>
+                        <td>15 min</td>
+                        <td><span class="priority-badge priority-high">High</span></td>
+                        <td>
+                            <button class="action-btn" onclick="alert('Edit service (mock)')">Edit</button>
+                            <button class="action-btn delete" onclick="alert('Delete service (mock)')">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: right;">
+            <button class="action-btn" onclick="location.href='admin-dashboard.html'" style="padding: 10px 20px;">← Back to Dashboard</button>
+        </div>
+    </div>
+
+    <script>
+        function validateForm() {
+            // Get form values
+            let name = document.getElementById('serviceName').value.trim();
+            let desc = document.getElementById('description').value.trim();
+            let duration = document.getElementById('duration').value;
+            let priority = document.getElementById('priority').value;
+            
+            // Reset error messages
+            document.querySelectorAll('.field-error').forEach(el => {
+                el.classList.remove('visible');
+            });
+            
+            let isValid = true;
+            
+            // name
+            if (!name) {
+                document.getElementById('nameError').classList.add('visible');
+                isValid = false;
+            }
+            
+            //  description
+            if (!desc) {
+                document.getElementById('descError').classList.add('visible');
+                isValid = false;
+            }
+            
+            //  duration
+            if (!duration || duration < 1) {
+                document.getElementById('durationError').classList.add('visible');
+                isValid = false;
+            }
+            
+            //  priority
+            if (!priority) {
+                document.getElementById('priorityError').classList.add('visible');
+                isValid = false;
+            }
+            
+            if (isValid) {
+                alert('✅ Service added successfully! (Mock data)');
+                document.getElementById('serviceForm').reset();
+            }
+            
+            return false; 
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Management – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .admin-wrapper {
+            max-width: 800px;
+            margin: 40px auto;
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .admin-header {
+            padding: 32px 40px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .admin-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .service-name {
+            color: var(--primary);
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .admin-content {
+            padding: 40px;
+            background: var(--bg);
+        }
+
+        .stats-mini {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-mini-card {
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .stat-mini-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-mini-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .serve-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .serve-btn:hover {
+            background: #15803d;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+        }
+
+        .queue-list {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            transition: background var(--transition);
+        }
+
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+
+        .queue-item:hover {
+            background: var(--primary-light);
+        }
+
+        .customer-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .position-circle {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .customer-details h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .customer-details p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .wait-badge {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 16px;
+        }
+
+        .queue-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .icon-btn.remove:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-queue {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-queue p {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-wrapper">
+        <div class="admin-header">
+            <h1>Queue Management</h1>
+            <span class="service-name" id="serviceName">Bank Teller</span>
+        </div>
+        
+        <div class="admin-content">
+           
+            <div class="stats-mini">
+                <div class="stat-mini-card">
+                    <div class="stat-mini-value" id="totalInQueue">8</div>
+                    <div class="stat-mini-label">In Queue</div>
+                </div>
+                <div class="stat-mini-card">
+                    <div class="stat-mini-value" id="avgWaitTime">25</div>
+                    <div class="stat-mini-label">Avg Wait (min)</div>
+                </div>
+                <div class="stat-mini-card">
+                    <div class="stat-mini-value" id="servedToday">47</div>
+                    <div class="stat-mini-label">Served Today</div>
+                </div>
+            </div>
+
+            <!-- Serve Next Button -->
+            <button class="serve-btn" onclick="serveNext()">
+                ✅ Serve Next Customer
+            </button>
+
+            <!-- Queue List -->
+            <div class="queue-list" id="queueList">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock data
+        let queue = [
+            { id: 1, name: "John Doe", ticket: "A101", waitTime: 5 },
+            { id: 2, name: "Jane Smith", ticket: "A102", waitTime: 8 },
+            { id: 3, name: "Bob Johnson", ticket: "A103", waitTime: 12 },
+            { id: 4, name: "Alice Brown", ticket: "A104", waitTime: 15 },
+        
+        ];
+        
+        // Display queue
+        function displayQueue() {
+            let queueHtml = '';
+            
+            if (queue.length === 0) {
+                queueHtml = `
+                    <div class="empty-queue">
+                        <div style="font-size: 48px;">🎉</div>
+                        <p>Queue is empty! All customers served.</p>
+                    </div>
+                `;
+            } else {
+                queue.forEach((person, index) => {
+                    queueHtml += `
+                        <div class="queue-item">
+                            <div class="customer-info">
+                                <div class="position-circle">${index + 1}</div>
+                                <div class="customer-details">
+                                    <h3>${person.name}</h3>
+                                    <p>Ticket: ${person.ticket}</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span class="wait-badge">⏱️ ${person.waitTime} min</span>
+                                <div class="queue-actions">
+                                    <button class="icon-btn" onclick="moveUp(${index})" ${index === 0 ? 'disabled' : ''}>↑</button>
+                                    <button class="icon-btn" onclick="moveDown(${index})" ${index === queue.length-1 ? 'disabled' : ''}>↓</button>
+                                    <button class="icon-btn remove" onclick="removeFromQueue(${index})">✕</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('queueList').innerHTML = queueHtml;
+            document.getElementById('totalInQueue').textContent = queue.length;
+            document.getElementById('avgWaitTime').textContent = queue.length > 0 ? Math.round(queue.reduce((sum, p) => sum + p.waitTime, 0) / queue.length) : 0;
+        }
+        
+        // Move person up
+        function moveUp(index) {
+            if (index > 0) {
+                [queue[index], queue[index-1]] = [queue[index-1], queue[index]];
+                queue.forEach((person, i) => {
+                    person.waitTime = 5 + (i * 3);
+                });
+                displayQueue();
+            }
+        }
+        
+        // Move person down
+        function moveDown(index) {
+            if (index < queue.length - 1) {
+                [queue[index], queue[index+1]] = [queue[index+1], queue[index]];
+                queue.forEach((person, i) => {
+                    person.waitTime = 5 + (i * 3);
+                });
+                displayQueue();
+            }
+        }
+        
+        // Remove from queue
+        function removeFromQueue(index) {
+            if (confirm(`Remove ${queue[index].name} from queue?`)) {
+                queue.splice(index, 1);
+                queue.forEach((person, i) => {
+                    person.waitTime = 5 + (i * 3);
+                });
+                displayQueue();
+            }
+        }
+        
+        // Serve next customer
+        function serveNext() {
+            if (queue.length > 0) {
+                alert(`✅ Now serving: ${queue[0].name} (Ticket: ${queue[0].ticket})`);
+                queue.shift();
+                queue.forEach((person, i) => {
+                    person.waitTime = 5 + (i * 3);
+                });
+                displayQueue();
+            } else {
+                alert('🎉 Queue is empty! No customers to serve.');
+            }
+        }
+        
+        // Get service from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const service = urlParams.get('service');
+        if (service) {
+            const serviceNames = {
+                'bank': 'Bank Teller',
+                'support': 'Customer Support',
+                'pharmacy': 'Pharmacy Pickup',
+                'tech': 'Technical Support'
+            };
+            document.getElementById('serviceName').textContent = serviceNames[service] || 'Bank Teller';
+        }
+        
+        displayQueue();
+    </script>
+</body>
+</html>
