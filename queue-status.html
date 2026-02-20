@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Status – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .user-nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .user-nav-links { display: flex; gap: 24px; align-items: center; }
+        .user-nav a { color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 14px; transition: color var(--transition); }
+        .user-nav a:hover, .user-nav a.active { color: var(--primary); }
+        .user-nav .brand { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .user-nav .logout { color: var(--danger); cursor: pointer; }
+        .status-wrapper { max-width: 500px; margin: 32px auto; padding: 0 24px; }
+        .status-header { margin-bottom: 32px; text-align: center; }
+        .status-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .status-header p { color: var(--text-secondary); font-size: 15px; }
+        .position-card {
+            background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+            border-radius: var(--radius);
+            padding: 40px;
+            text-align: center;
+            color: white;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-lg);
+        }
+        .position-card .position-value { font-size: 64px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
+        .position-card .position-label { font-size: 18px; opacity: 0.9; }
+        .wait-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .wait-card .wait-value { font-size: 32px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+        .wait-card .wait-label { font-size: 14px; color: var(--text-muted); }
+        .status-updates {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .status-updates h2 { font-size: 18px; margin-bottom: 16px; }
+        .status-step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            transition: background var(--transition);
+        }
+        .status-step.active { background: var(--primary-light); border-left: 4px solid var(--primary); }
+        .status-step.done { opacity: 0.7; }
+        .status-step .step-icon { font-size: 24px; width: 40px; text-align: center; }
+        .status-step .step-content h3 { font-size: 15px; margin-bottom: 4px; }
+        .status-step .step-content p { font-size: 13px; color: var(--text-muted); }
+        .leave-btn { margin-top: 24px; width: 100%; }
+        .btn-outline-danger { background: transparent; border: 1.5px solid var(--danger); color: var(--danger); }
+        .btn-outline-danger:hover { background: var(--danger-light); }
+    </style>
+</head>
+<body>
+    <nav class="user-nav">
+        <div class="user-nav-links">
+            <a href="user-dashboard.html" class="brand">QueueSmart</a>
+            <a href="user-dashboard.html">Dashboard</a>
+            <a href="join-queue.html">Join Queue</a>
+            <a href="queue-status.html" class="active">Queue Status</a>
+            <a href="notifications.html">Notifications</a>
+        </div>
+        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+    </nav>
+
+    <div class="status-wrapper">
+        <div class="status-header">
+            <h1 id="serviceTitle">Queue Status</h1>
+            <p id="serviceSubtitle">Your position and estimated wait</p>
+        </div>
+
+        <div class="position-card">
+            <div class="position-value" id="positionValue">1</div>
+            <div class="position-label">Your position in queue</div>
+        </div>
+
+        <div class="wait-card">
+            <div class="wait-value" id="waitValue">25 min</div>
+            <div class="wait-label">Estimated wait time</div>
+        </div>
+
+        <div class="status-updates">
+            <h2>Status updates</h2>
+            <div id="statusSteps"></div>
+        </div>
+
+        <button class="btn btn-outline-danger leave-btn" id="leaveBtn">Leave Queue</button>
+    </div>
+
+    <script>
+        (function() {
+            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            if (!user.email) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const serviceId = urlParams.get('service');
+            let currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+
+            if (!currentQueue || (serviceId && currentQueue.serviceId !== serviceId)) {
+                if (serviceId) {
+                    const services = { bank: 'Bank Teller', support: 'Customer Support', pharmacy: 'Pharmacy Pickup' };
+                    currentQueue = {
+                        serviceId,
+                        serviceName: services[serviceId] || 'Service',
+                        position: 3,
+                        waitTime: 15,
+                        joinedAt: new Date().toISOString(),
+                        status: 'waiting'
+                    };
+                    localStorage.setItem('qs_current_queue', JSON.stringify(currentQueue));
+                } else {
+                    window.location.href = 'user-dashboard.html';
+                    return;
+                }
+            }
+
+            const steps = [
+                { id: 'waiting', icon: '⏳', title: 'Waiting', desc: 'You are in the queue', done: true },
+                { id: 'almost', icon: '🔔', title: 'Almost ready', desc: '2 people ahead of you', done: currentQueue.position <= 2 },
+                { id: 'served', icon: '✓', title: 'Served', desc: 'Your turn has come', done: currentQueue.position <= 1 }
+            ];
+
+            document.getElementById('serviceTitle').textContent = currentQueue.serviceName;
+            document.getElementById('serviceSubtitle').textContent = 'Your position and estimated wait';
+            document.getElementById('positionValue').textContent = currentQueue.position;
+            document.getElementById('waitValue').textContent = currentQueue.waitTime + ' min';
+
+            const activeStep = currentQueue.position > 2 ? 0 : currentQueue.position > 1 ? 1 : 2;
+            document.getElementById('statusSteps').innerHTML = steps.map((s, i) => `
+                <div class="status-step ${i < activeStep ? 'done' : ''} ${i === activeStep ? 'active' : ''}">
+                    <span class="step-icon">${s.icon}</span>
+                    <div class="step-content">
+                        <h3>${s.title}</h3>
+                        <p>${s.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('leaveBtn').addEventListener('click', () => {
+                if (confirm('Leave this queue?')) {
+                    localStorage.removeItem('qs_current_queue');
+                    const history = JSON.parse(localStorage.getItem('qs_history') || '[]');
+                    const latest = history.find(h => h.serviceId === currentQueue.serviceId && h.outcome === 'waiting');
+                    if (latest) latest.outcome = 'left';
+                    localStorage.setItem('qs_history', JSON.stringify(history));
+                    window.location.href = 'user-dashboard.html';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

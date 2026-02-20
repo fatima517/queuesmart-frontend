@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .user-nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .user-nav-links { display: flex; gap: 24px; align-items: center; }
+        .user-nav a { color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 14px; transition: color var(--transition); }
+        .user-nav a:hover, .user-nav a.active { color: var(--primary); }
+        .user-nav .brand { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .user-nav .logout { color: var(--danger); cursor: pointer; }
+        .history-wrapper { max-width: 700px; margin: 32px auto; padding: 0 24px; }
+        .history-header { margin-bottom: 32px; }
+        .history-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .history-header p { color: var(--text-secondary); font-size: 15px; }
+        .history-list {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            transition: background var(--transition);
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item:hover { background: var(--bg); }
+        .history-info h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .history-info p { font-size: 14px; color: var(--text-muted); }
+        .outcome-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .outcome-badge.served { background: #dcfce7; color: var(--success); }
+        .outcome-badge.waiting { background: #dbeafe; color: var(--primary); }
+        .outcome-badge.left { background: #fee2e2; color: var(--danger); }
+        .outcome-badge.cancelled { background: #fef3c7; color: #d97706; }
+        .history-empty {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--text-muted);
+        }
+        .history-empty .icon { font-size: 48px; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <nav class="user-nav">
+        <div class="user-nav-links">
+            <a href="user-dashboard.html" class="brand">QueueSmart</a>
+            <a href="user-dashboard.html">Dashboard</a>
+            <a href="join-queue.html">Join Queue</a>
+            <a href="history.html" class="active">History</a>
+        </div>
+        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+    </nav>
+
+    <div class="history-wrapper">
+        <div class="history-header">
+            <h1>Queue History</h1>
+            <p>List of past queues you joined</p>
+        </div>
+
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <script>
+        (function() {
+            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            if (!user.email) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            let history = JSON.parse(localStorage.getItem('qs_history') || '[]');
+            const currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+
+            if (history.length === 0) {
+                history = [
+                    { serviceName: 'Bank Teller', serviceId: 'bank', date: new Date().toLocaleDateString(), outcome: 'served' },
+                    { serviceName: 'Customer Support', serviceId: 'support', date: new Date(Date.now() - 86400000).toLocaleDateString(), outcome: 'left' }
+                ];
+                localStorage.setItem('qs_history', JSON.stringify(history));
+            }
+
+            const list = document.getElementById('historyList');
+            if (history.length === 0) {
+                list.innerHTML = `
+                    <div class="history-empty">
+                        <div class="icon">📋</div>
+                        <p>No queue history yet</p>
+                        <a href="join-queue.html" class="btn btn-primary" style="width: auto; margin-top: 16px; display: inline-block;">Join a Queue</a>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = history.map(item => `
+                    <div class="history-item">
+                        <div class="history-info">
+                            <h3>${item.serviceName}</h3>
+                            <p>${item.date}</p>
+                        </div>
+                        <span class="outcome-badge ${item.outcome}">${item.outcome.toUpperCase()}</span>
+                    </div>
+                `).join('');
+            }
+        })();
+    </script>
+</body>
+</html>

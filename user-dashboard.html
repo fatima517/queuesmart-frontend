@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .user-nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .user-nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        .user-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: color var(--transition);
+        }
+        .user-nav a:hover, .user-nav a.active {
+            color: var(--primary);
+        }
+        .user-nav .brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .user-nav .logout {
+            color: var(--danger);
+            cursor: pointer;
+        }
+        .user-nav .logout:hover { color: #b91c1c; }
+        .dashboard-wrapper {
+            max-width: 1000px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+        .dashboard-header {
+            margin-bottom: 32px;
+        }
+        .dashboard-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .dashboard-header p {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+        .queue-status-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .queue-status-card h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .queue-status-empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+        }
+        .queue-status-empty p { margin-top: 12px; }
+        .queue-status-active {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: var(--primary-light);
+            border-radius: var(--radius-sm);
+            border-left: 4px solid var(--primary);
+        }
+        .queue-status-info h3 { font-size: 16px; margin-bottom: 4px; }
+        .queue-status-info p { font-size: 14px; color: var(--text-secondary); }
+        .queue-status-active .btn { width: auto; padding: 10px 20px; }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .service-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: all var(--transition);
+        }
+        .service-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        .service-card h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .service-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        .service-meta {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-badge.open { background: #dcfce7; color: var(--success); }
+        .status-badge.closed { background: #fee2e2; color: var(--danger); }
+        .notifications-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }
+        .notifications-card h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .notification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            background: var(--bg);
+        }
+        .notification-item:last-child { margin-bottom: 0; }
+        .notification-icon { font-size: 20px; flex-shrink: 0; }
+        .notification-content p { font-size: 14px; margin-bottom: 4px; }
+        .notification-content span { font-size: 12px; color: var(--text-muted); }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 32px 0 16px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="user-nav">
+        <div class="user-nav-links">
+            <a href="user-dashboard.html" class="brand">QueueSmart</a>
+            <a href="user-dashboard.html" class="active">Dashboard</a>
+            <a href="join-queue.html">Join Queue</a>
+            <a href="queue-status.html">Queue Status</a>
+            <a href="notifications.html">Notifications</a>
+        </div>
+        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+    </nav>
+
+    <div class="dashboard-wrapper">
+        <div class="dashboard-header">
+            <h1>Welcome back</h1>
+            <p id="welcomeText">Manage your queue and view available services</p>
+        </div>
+
+        <div class="queue-status-card">
+            <h2>📋 Current Queue Status</h2>
+            <div id="currentQueueStatus">
+                <div class="queue-status-empty">
+                    <div style="font-size: 40px;">✓</div>
+                    <p>You are not in any queue right now</p>
+                    <a href="join-queue.html" class="btn btn-primary" style="width: auto; margin-top: 16px; display: inline-block;">Join a Queue</a>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Active Services</h2>
+        <div class="services-grid" id="servicesGrid">
+        </div>
+
+        <h2 class="section-title">Notifications <a href="notifications.html" style="font-size: 14px; font-weight: 500;">View all</a></h2>
+        <div class="notifications-card">
+            <div id="notificationsList">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            if (!user.email) {
+                window.location.href = 'login.html';
+                return;
+            }
+            document.getElementById('welcomeText').textContent = user.email ? 'Manage your queue and view available services' : 'Manage your queue and view available services';
+
+            const services = [
+                { id: 'bank', name: 'Bank Teller', desc: 'Deposits, withdrawals, and account services', wait: 25, status: 'open', count: 8 },
+                { id: 'support', name: 'Customer Support', desc: 'Account questions and issues', wait: 10, status: 'open', count: 3 },
+                { id: 'pharmacy', name: 'Pharmacy Pickup', desc: 'Prescription pickup and consultations', wait: null, status: 'closed', count: 0 }
+            ];
+
+            let currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+
+            function renderQueueStatus() {
+                const el = document.getElementById('currentQueueStatus');
+                if (currentQueue) {
+                    el.innerHTML = `
+                        <div class="queue-status-active">
+                            <div class="queue-status-info">
+                                <h3>${currentQueue.serviceName}</h3>
+                                <p>Position: ${currentQueue.position} · Est. wait: ${currentQueue.waitTime} min</p>
+                            </div>
+                            <a href="queue-status.html?service=${currentQueue.serviceId}" class="btn btn-primary">View Status</a>
+                        </div>
+                    `;
+                }
+            }
+
+            function renderServices() {
+                const grid = document.getElementById('servicesGrid');
+                grid.innerHTML = services.map(s => `
+                    <div class="service-card">
+                        <h3>${s.name}</h3>
+                        <p>${s.desc}</p>
+                        <div class="service-meta">
+                            <span>⏱️ ${s.wait ? s.wait + ' min wait' : '—'}</span>
+                            <span>👥 ${s.count} in line</span>
+                        </div>
+                        <span class="status-badge ${s.status}">${s.status.toUpperCase()}</span>
+                        <div style="margin-top: 16px;">
+                            <a href="join-queue.html?service=${s.id}" class="btn btn-primary" ${s.status === 'closed' ? 'style="opacity:0.6;pointer-events:none"' : ''}>Join Queue</a>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function renderNotifications() {
+                const notifications = JSON.parse(localStorage.getItem('qs_notifications') || '[]');
+                const list = document.getElementById('notificationsList');
+                if (notifications.length === 0) {
+                    list.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">No notifications yet</p>';
+                } else {
+                    list.innerHTML = notifications.slice(0, 5).map(n => `
+                        <div class="notification-item">
+                            <span class="notification-icon">${n.icon || '🔔'}</span>
+                            <div class="notification-content">
+                                <p>${n.message}</p>
+                                <span>${n.time}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            renderQueueStatus();
+            renderServices();
+            renderNotifications();
+        })();
+    </script>
+</body>
+</html>

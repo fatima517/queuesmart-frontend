@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Queue – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .user-nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .user-nav-links { display: flex; gap: 24px; align-items: center; }
+        .user-nav a { color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 14px; transition: color var(--transition); }
+        .user-nav a:hover, .user-nav a.active { color: var(--primary); }
+        .user-nav .brand { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .user-nav .logout { color: var(--danger); cursor: pointer; }
+        .join-wrapper { max-width: 600px; margin: 32px auto; padding: 0 24px; }
+        .join-header { margin-bottom: 32px; }
+        .join-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .join-header p { color: var(--text-secondary); font-size: 15px; }
+        .service-select-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .service-select-card h2 { font-size: 18px; margin-bottom: 16px; }
+        .service-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+        .service-option:last-child { margin-bottom: 0; }
+        .service-option:hover { border-color: var(--primary); background: var(--primary-light); }
+        .service-option.selected { border-color: var(--primary); background: var(--primary-light); }
+        .service-option.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+        .service-option-info h3 { font-size: 16px; margin-bottom: 4px; }
+        .service-option-info p { font-size: 13px; color: var(--text-muted); }
+        .wait-display {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .wait-display .wait-value { font-size: 36px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+        .wait-display .wait-label { font-size: 14px; color: var(--text-muted); }
+        .action-buttons { display: flex; gap: 16px; }
+        .action-buttons .btn { flex: 1; }
+        .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+        .btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+    </style>
+</head>
+<body>
+    <nav class="user-nav">
+        <div class="user-nav-links">
+            <a href="user-dashboard.html" class="brand">QueueSmart</a>
+            <a href="user-dashboard.html">Dashboard</a>
+            <a href="join-queue.html" class="active">Join Queue</a>
+            <a href="queue-status.html">Queue Status</a>
+            <a href="notifications.html">Notifications</a>
+        </div>
+        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+    </nav>
+
+    <div class="join-wrapper">
+        <div class="join-header">
+            <h1>Join a Queue</h1>
+            <p>Select a service and join the queue</p>
+        </div>
+
+        <div class="service-select-card">
+            <h2>Select a service</h2>
+            <div id="serviceOptions"></div>
+        </div>
+
+        <div class="wait-display" id="waitDisplay">
+            <div class="wait-value" id="waitValue">—</div>
+            <div class="wait-label">Estimated wait time</div>
+        </div>
+
+        <div class="action-buttons" id="actionButtons">
+            <button class="btn btn-primary" id="joinBtn" disabled>Join Queue</button>
+            <button class="btn btn-danger" id="leaveBtn" style="display: none;">Leave Queue</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            if (!user.email) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const services = [
+                { id: 'bank', name: 'Bank Teller', wait: 25, status: 'open', count: 8 },
+                { id: 'support', name: 'Customer Support', wait: 10, status: 'open', count: 3 },
+                { id: 'pharmacy', name: 'Pharmacy Pickup', wait: null, status: 'closed', count: 0 }
+            ];
+
+            let currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+            const urlParams = new URLSearchParams(window.location.search);
+            const preselected = urlParams.get('service');
+            let selectedService = null;
+            if (currentQueue) {
+                const m = services.find(s => s.id === currentQueue.serviceId);
+                if (m) selectedService = { id: m.id, name: m.name, wait: m.wait };
+            }
+
+            function renderOptions() {
+                const container = document.getElementById('serviceOptions');
+                container.innerHTML = services.map(s => {
+                    const isSelected = selectedService && selectedService.id === s.id;
+                    const inThisQueue = currentQueue && currentQueue.serviceId === s.id;
+                    const isDisabled = s.status === 'closed';
+                    return `
+                        <div class="service-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
+                             data-id="${s.id}" data-name="${s.name}" data-wait="${s.wait || 0}" data-status="${s.status}">
+                            <div class="service-option-info">
+                                <h3>${s.name} ${inThisQueue ? '(You are in this queue)' : ''}</h3>
+                                <p>${s.status === 'open' ? 'Est. ' + s.wait + ' min · ' + s.count + ' in line' : 'Currently closed'}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.querySelectorAll('.service-option:not(.disabled)').forEach(el => {
+                    el.addEventListener('click', () => {
+                        selectedService = { id: el.dataset.id, name: el.dataset.name, wait: parseInt(el.dataset.wait) || 0 };
+                        renderOptions();
+                        updateWaitDisplay();
+                        const inThisQueue = currentQueue && currentQueue.serviceId === selectedService.id;
+                        const inOtherQueue = currentQueue && currentQueue.serviceId !== selectedService.id;
+                        document.getElementById('joinBtn').textContent = inThisQueue ? 'View Queue Status' : 'Join Queue';
+                        document.getElementById('joinBtn').disabled = inOtherQueue;
+                        document.getElementById('joinBtn').style.display = 'block';
+                        document.getElementById('leaveBtn').style.display = inThisQueue ? 'block' : 'none';
+                    });
+                });
+
+                if (preselected && !selectedService) {
+                    const match = services.find(s => s.id === preselected);
+                    if (match && match.status === 'open') {
+                        const el = container.querySelector(`[data-id="${preselected}"]`);
+                        if (el && !el.classList.contains('disabled')) {
+                            el.click();
+                        }
+                    }
+                }
+            }
+
+            function updateWaitDisplay() {
+                const el = document.getElementById('waitValue');
+                if (selectedService) {
+                    el.textContent = selectedService.wait ? selectedService.wait + ' min' : '—';
+                } else {
+                    el.textContent = '—';
+                }
+            }
+
+            document.getElementById('joinBtn').addEventListener('click', () => {
+                if (!selectedService) return;
+                if (currentQueue && currentQueue.serviceId === selectedService.id) {
+                    window.location.href = 'queue-status.html?service=' + selectedService.id;
+                    return;
+                }
+                if (currentQueue) return;
+                const position = Math.floor(Math.random() * 5) + 1;
+                const newQueue = {
+                    serviceId: selectedService.id,
+                    serviceName: selectedService.name,
+                    position,
+                    waitTime: selectedService.wait,
+                    joinedAt: new Date().toISOString()
+                };
+                localStorage.setItem('qs_current_queue', JSON.stringify(newQueue));
+                const history = JSON.parse(localStorage.getItem('qs_history') || '[]');
+                history.unshift({
+                    serviceName: selectedService.name,
+                    serviceId: selectedService.id,
+                    date: new Date().toLocaleDateString(),
+                    outcome: 'waiting',
+                    joinedAt: new Date().toISOString()
+                });
+                localStorage.setItem('qs_history', JSON.stringify(history));
+                window.location.href = 'queue-status.html?service=' + selectedService.id;
+            });
+
+            document.getElementById('leaveBtn').addEventListener('click', () => {
+                if (!selectedService || !currentQueue) return;
+                if (confirm('Leave this queue?')) {
+                    localStorage.removeItem('qs_current_queue');
+                    const history = JSON.parse(localStorage.getItem('qs_history') || '[]');
+                    const latest = history.find(h => h.serviceId === currentQueue.serviceId && h.outcome === 'waiting');
+                    if (latest) latest.outcome = 'left';
+                    localStorage.setItem('qs_history', JSON.stringify(history));
+                    window.location.href = 'user-dashboard.html';
+                }
+            });
+
+            renderOptions();
+            updateWaitDisplay();
+            if (currentQueue && selectedService) {
+                document.getElementById('joinBtn').textContent = 'View Queue Status';
+                document.getElementById('joinBtn').disabled = false;
+                document.getElementById('joinBtn').style.display = 'block';
+                document.getElementById('leaveBtn').style.display = 'block';
+            }
+        })();
+    </script>
+</body>
+</html>

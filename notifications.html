@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications – QueueSmart</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .user-nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .user-nav-links { display: flex; gap: 24px; align-items: center; }
+        .user-nav a { color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 14px; transition: color var(--transition); }
+        .user-nav a:hover, .user-nav a.active { color: var(--primary); }
+        .user-nav .brand { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .user-nav .logout { color: var(--danger); cursor: pointer; }
+        .notif-wrapper { max-width: 700px; margin: 32px auto; padding: 0 24px; }
+        .notif-header { margin-bottom: 32px; }
+        .notif-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .notif-header p { color: var(--text-secondary); font-size: 15px; }
+        .notif-list {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            transition: background var(--transition);
+        }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item:hover { background: var(--bg); }
+        .notif-item.unread { background: var(--primary-light); }
+        .notif-icon { font-size: 24px; flex-shrink: 0; }
+        .notif-content h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .notif-content p { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+        .notif-content span { font-size: 12px; color: var(--text-muted); }
+        .notif-empty {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--text-muted);
+        }
+        .notif-empty .icon { font-size: 48px; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <nav class="user-nav">
+        <div class="user-nav-links">
+            <a href="user-dashboard.html" class="brand">QueueSmart</a>
+            <a href="user-dashboard.html">Dashboard</a>
+            <a href="join-queue.html">Join Queue</a>
+            <a href="queue-status.html">Queue Status</a>
+            <a href="notifications.html" class="active">Notifications</a>
+        </div>
+        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+    </nav>
+
+    <div class="notif-wrapper">
+        <div class="notif-header">
+            <h1>Notifications</h1>
+            <p>Your queue and service updates</p>
+        </div>
+
+        <div class="notif-list" id="notifList"></div>
+    </div>
+
+    <script>
+        (function() {
+            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            if (!user.email) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            let notifications = JSON.parse(localStorage.getItem('qs_notifications') || '[]');
+            const currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+
+            if (notifications.length === 0 && currentQueue) {
+                notifications = [
+                    { icon: '📍', title: 'Queue joined', message: 'You joined the queue for ' + currentQueue.serviceName + '. Your position: #' + currentQueue.position, time: 'Just now', unread: true },
+                    { icon: '⏱️', title: 'Wait time update', message: 'Estimated wait for ' + (currentQueue.serviceName || 'your queue') + ': ' + (currentQueue.waitTime || 15) + ' minutes', time: '5 min ago', unread: false }
+                ];
+            } else if (notifications.length === 0) {
+                notifications = [
+                    { icon: '🔔', title: 'Welcome to QueueSmart', message: 'Join a queue to get started. You will receive notifications when it is almost your turn.', time: 'Today', unread: false },
+                    { icon: '✓', title: 'No active queues', message: 'You are not currently in any queue. Visit Join Queue to get in line.', time: 'Today', unread: false }
+                ];
+            }
+
+            const list = document.getElementById('notifList');
+            if (notifications.length === 0) {
+                list.innerHTML = `
+                    <div class="notif-empty">
+                        <div class="icon">🔔</div>
+                        <p>No notifications yet</p>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = notifications.map(n => `
+                    <div class="notif-item ${n.unread ? 'unread' : ''}">
+                        <span class="notif-icon">${n.icon || '🔔'}</span>
+                        <div class="notif-content">
+                            <h3>${n.title || 'Notification'}</h3>
+                            <p>${n.message || ''}</p>
+                            <span>${n.time || ''}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        })();
+    </script>
+</body>
+</html>
