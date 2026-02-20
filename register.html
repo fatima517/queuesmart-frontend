@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register – QueueSmart</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+
+    <!-- Brand Panel -->
+    <aside class="auth-brand">
+      <div class="brand-content">
+        <div class="brand-logo">
+          <div class="brand-icon">⚡</div>
+          <span class="brand-name">QueueSmart</span>
+        </div>
+        <p class="brand-tagline">Your time is worth more.</p>
+        <p class="brand-description">
+          Create a free account and start managing your queues smarter. Get notified the moment you're up — no more waiting around.
+        </p>
+        <div class="brand-features">
+          <div class="brand-feature">
+            <div class="brand-feature-icon">🆓</div>
+            <span>Free to join — no credit card needed</span>
+          </div>
+          <div class="brand-feature">
+            <div class="brand-feature-icon">📱</div>
+            <span>Works on any device, anywhere</span>
+          </div>
+          <div class="brand-feature">
+            <div class="brand-feature-icon">🔒</div>
+            <span>Your data is safe and private</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Form Panel -->
+    <main class="auth-form-side">
+      <div class="auth-card">
+
+        <div class="auth-header">
+          <h1>Create your account</h1>
+          <p>Join QueueSmart and skip the wait</p>
+        </div>
+
+        <!-- Success alert -->
+        <div class="alert alert-success" id="successAlert" role="status">
+          <span>✅</span>
+          <span>Account created! Redirecting you to login…</span>
+        </div>
+
+        <!-- General error alert -->
+        <div class="alert alert-error" id="errorAlert" role="alert">
+          <span>⚠️</span>
+          <span id="errorAlertMsg">Something went wrong. Please try again.</span>
+        </div>
+
+        <form id="registerForm" novalidate>
+
+          <!-- Full Name -->
+          <div class="form-group">
+            <label class="form-label" for="fullName">
+              Full name <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                class="form-input"
+                type="text"
+                id="fullName"
+                name="fullName"
+                placeholder="Jane Smith"
+                maxlength="100"
+                autocomplete="name"
+              />
+              <span class="input-icon">👤</span>
+            </div>
+            <span class="field-error" id="fullNameError">Full name is required.</span>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="email">
+              Email address <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                class="form-input"
+                type="email"
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                maxlength="254"
+                autocomplete="email"
+              />
+              <span class="input-icon">✉️</span>
+            </div>
+            <span class="field-error" id="emailError">Please enter a valid email address.</span>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="password">
+              Password <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                class="form-input has-right-icon"
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Create a strong password"
+                maxlength="128"
+                autocomplete="new-password"
+              />
+              <span class="input-icon">🔒</span>
+              <button type="button" class="input-icon-right" id="togglePassword" aria-label="Show password">
+                👁️
+              </button>
+            </div>
+            <span class="field-error" id="passwordError">Password must be at least 8 characters.</span>
+            <!-- Strength meter -->
+            <div class="password-strength" id="strengthMeter">
+              <div class="strength-bar">
+                <div class="strength-fill" id="strengthFill"></div>
+              </div>
+              <span class="strength-label" id="strengthLabel"></span>
+            </div>
+            <span class="field-hint">Minimum 8 characters. Include numbers and symbols for a stronger password.</span>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="form-group">
+            <label class="form-label" for="confirmPassword">
+              Confirm password <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                class="form-input has-right-icon"
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                placeholder="Re-enter your password"
+                maxlength="128"
+                autocomplete="new-password"
+              />
+              <span class="input-icon">🔒</span>
+              <button type="button" class="input-icon-right" id="toggleConfirm" aria-label="Show confirm password">
+                👁️
+              </button>
+            </div>
+            <span class="field-error" id="confirmPasswordError">Passwords do not match.</span>
+          </div>
+
+          <!-- Terms & Conditions -->
+          <div class="checkbox-group">
+            <input type="checkbox" id="terms" name="terms" />
+            <label class="checkbox-label" for="terms">
+              I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+            </label>
+          </div>
+          <span class="field-error" id="termsError" style="margin-top:-14px;margin-bottom:16px;display:none">
+            You must accept the terms to continue.
+          </span>
+
+          <button type="submit" class="btn btn-primary" id="registerBtn">
+            Create Account
+          </button>
+
+        </form>
+
+        <div class="auth-footer">
+          Already have an account? <a href="login.html">Sign in</a>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    (function () {
+      const form          = document.getElementById('registerForm');
+      const nameInput     = document.getElementById('fullName');
+      const emailInput    = document.getElementById('email');
+      const passInput     = document.getElementById('password');
+      const confirmInput  = document.getElementById('confirmPassword');
+      const termsInput    = document.getElementById('terms');
+
+      const nameErr       = document.getElementById('fullNameError');
+      const emailErr      = document.getElementById('emailError');
+      const passErr       = document.getElementById('passwordError');
+      const confirmErr    = document.getElementById('confirmPasswordError');
+      const termsErr      = document.getElementById('termsError');
+
+      const successAlert  = document.getElementById('successAlert');
+      const errorAlert    = document.getElementById('errorAlert');
+      const errorAlertMsg = document.getElementById('errorAlertMsg');
+
+      const strengthMeter = document.getElementById('strengthMeter');
+      const strengthFill  = document.getElementById('strengthFill');
+      const strengthLabel = document.getElementById('strengthLabel');
+
+      // --- Helpers ---
+      function setValid(input, errEl) {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        errEl.classList.remove('visible');
+        errEl.style.display = '';
+      }
+
+      function setInvalid(input, errEl, msg) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        errEl.textContent = msg;
+        errEl.classList.add('visible');
+        errEl.style.display = 'block';
+      }
+
+      function isValidEmail(val) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+      }
+
+      // --- Password strength ---
+      function evaluateStrength(pwd) {
+        let score = 0;
+        if (pwd.length >= 8)  score++;
+        if (pwd.length >= 12) score++;
+        if (/[A-Z]/.test(pwd)) score++;
+        if (/[0-9]/.test(pwd)) score++;
+        if (/[^A-Za-z0-9]/.test(pwd)) score++;
+        if (score <= 2) return 'weak';
+        if (score <= 3) return 'medium';
+        return 'strong';
+      }
+
+      function updateStrength(val) {
+        if (!val) {
+          strengthMeter.classList.remove('visible');
+          return;
+        }
+        strengthMeter.classList.add('visible');
+        const level = evaluateStrength(val);
+        strengthFill.className = 'strength-fill ' + level;
+        strengthLabel.className = 'strength-label ' + level;
+        const labels = { weak: 'Weak', medium: 'Fair', strong: 'Strong' };
+        strengthLabel.textContent = 'Strength: ' + labels[level];
+      }
+
+      // --- Validators ---
+      function validateName() {
+        const val = nameInput.value.trim();
+        if (!val) {
+          setInvalid(nameInput, nameErr, 'Full name is required.');
+          return false;
+        }
+        if (val.length < 2) {
+          setInvalid(nameInput, nameErr, 'Name must be at least 2 characters.');
+          return false;
+        }
+        if (val.length > 100) {
+          setInvalid(nameInput, nameErr, 'Name must be 100 characters or fewer.');
+          return false;
+        }
+        setValid(nameInput, nameErr);
+        return true;
+      }
+
+      function validateEmail() {
+        const val = emailInput.value.trim();
+        if (!val) {
+          setInvalid(emailInput, emailErr, 'Email address is required.');
+          return false;
+        }
+        if (!isValidEmail(val)) {
+          setInvalid(emailInput, emailErr, 'Please enter a valid email address.');
+          return false;
+        }
+        if (val.length > 254) {
+          setInvalid(emailInput, emailErr, 'Email must be 254 characters or fewer.');
+          return false;
+        }
+        setValid(emailInput, emailErr);
+        return true;
+      }
+
+      function validatePassword() {
+        const val = passInput.value;
+        if (!val) {
+          setInvalid(passInput, passErr, 'Password is required.');
+          return false;
+        }
+        if (val.length < 8) {
+          setInvalid(passInput, passErr, 'Password must be at least 8 characters.');
+          return false;
+        }
+        if (val.length > 128) {
+          setInvalid(passInput, passErr, 'Password must be 128 characters or fewer.');
+          return false;
+        }
+        setValid(passInput, passErr);
+        return true;
+      }
+
+      function validateConfirm() {
+        const val = confirmInput.value;
+        if (!val) {
+          setInvalid(confirmInput, confirmErr, 'Please confirm your password.');
+          return false;
+        }
+        if (val !== passInput.value) {
+          setInvalid(confirmInput, confirmErr, 'Passwords do not match.');
+          return false;
+        }
+        setValid(confirmInput, confirmErr);
+        return true;
+      }
+
+      function validateTerms() {
+        if (!termsInput.checked) {
+          termsErr.textContent = 'You must accept the terms to continue.';
+          termsErr.classList.add('visible');
+          termsErr.style.display = 'block';
+          return false;
+        }
+        termsErr.classList.remove('visible');
+        termsErr.style.display = 'none';
+        return true;
+      }
+
+      // --- Live validation on blur ---
+      nameInput.addEventListener('blur', validateName);
+      emailInput.addEventListener('blur', validateEmail);
+      passInput.addEventListener('blur', validatePassword);
+      confirmInput.addEventListener('blur', validateConfirm);
+
+      // Live re-validation on input
+      nameInput.addEventListener('input', function () {
+        if (nameInput.classList.contains('is-invalid')) validateName();
+      });
+      emailInput.addEventListener('input', function () {
+        if (emailInput.classList.contains('is-invalid')) validateEmail();
+      });
+      passInput.addEventListener('input', function () {
+        updateStrength(passInput.value);
+        if (passInput.classList.contains('is-invalid')) validatePassword();
+        if (confirmInput.value) validateConfirm();
+      });
+      confirmInput.addEventListener('input', function () {
+        if (confirmInput.classList.contains('is-invalid')) validateConfirm();
+      });
+      termsInput.addEventListener('change', function () {
+        if (termsInput.checked) {
+          termsErr.classList.remove('visible');
+          termsErr.style.display = 'none';
+        }
+      });
+
+      // --- Toggle password visibility ---
+      function makeToggle(btn, input) {
+        btn.addEventListener('click', function () {
+          const hidden = input.type === 'password';
+          input.type = hidden ? 'text' : 'password';
+          btn.textContent = hidden ? '🙈' : '👁️';
+          btn.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+        });
+      }
+      makeToggle(document.getElementById('togglePassword'), passInput);
+      makeToggle(document.getElementById('toggleConfirm'), confirmInput);
+
+      // --- Form submission ---
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        successAlert.classList.remove('visible');
+        errorAlert.classList.remove('visible');
+
+        const nameOk    = validateName();
+        const emailOk   = validateEmail();
+        const passOk    = validatePassword();
+        const confirmOk = validateConfirm();
+        const termsOk   = validateTerms();
+
+        if (!nameOk || !emailOk || !passOk || !confirmOk || !termsOk) return;
+
+        // Mock registration — store in sessionStorage and redirect
+        const userData = {
+          name:  nameInput.value.trim(),
+          email: emailInput.value.trim().toLowerCase(),
+          role:  'user',
+        };
+        sessionStorage.setItem('qs_user', JSON.stringify(userData));
+        sessionStorage.setItem('qs_registered', '1');
+
+        successAlert.classList.add('visible');
+        form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+
+        setTimeout(function () {
+          window.location.href = 'login.html';
+        }, 1800);
+      });
+    })();
+  </script>
+</body>
+</html>

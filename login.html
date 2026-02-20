@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – QueueSmart</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+
+    <!-- Brand Panel -->
+    <aside class="auth-brand">
+      <div class="brand-content">
+        <div class="brand-logo">
+          <div class="brand-icon">⚡</div>
+          <span class="brand-name">QueueSmart</span>
+        </div>
+        <p class="brand-tagline">Skip the line. Save your time.</p>
+        <p class="brand-description">
+          Join virtual queues for your favourite services and get real-time updates — no more standing around waiting.
+        </p>
+        <div class="brand-features">
+          <div class="brand-feature">
+            <div class="brand-feature-icon">📍</div>
+            <span>Real-time queue position tracking</span>
+          </div>
+          <div class="brand-feature">
+            <div class="brand-feature-icon">🔔</div>
+            <span>Instant notifications when it's your turn</span>
+          </div>
+          <div class="brand-feature">
+            <div class="brand-feature-icon">📊</div>
+            <span>Accurate wait time estimates</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Form Panel -->
+    <main class="auth-form-side">
+      <div class="auth-card">
+
+        <div class="auth-header">
+          <h1>Welcome back</h1>
+          <p>Sign in to your QueueSmart account</p>
+        </div>
+
+        <!-- General error alert -->
+        <div class="alert alert-error" id="loginAlert" role="alert">
+          <span>⚠️</span>
+          <span id="loginAlertMsg">Invalid email or password. Please try again.</span>
+        </div>
+
+        <form id="loginForm" novalidate>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="email">
+              Email address <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                class="form-input"
+                type="email"
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                maxlength="254"
+                autocomplete="email"
+              />
+              <span class="input-icon">✉️</span>
+            </div>
+            <span class="field-error" id="emailError">Please enter a valid email address.</span>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="password">
+              Password <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                class="form-input has-right-icon"
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                maxlength="128"
+                autocomplete="current-password"
+              />
+              <span class="input-icon">🔒</span>
+              <button type="button" class="input-icon-right" id="togglePassword" aria-label="Toggle password visibility">
+                👁
+              </button>
+            </div>
+            <span class="field-error" id="passwordError">Password is required.</span>
+          </div>
+
+          <a href="#" class="forgot-link">Forgot your password?</a>
+
+          <button type="submit" class="btn btn-primary" id="loginBtn">
+            Sign In
+          </button>
+
+        </form>
+
+        <div class="auth-footer">
+          Don't have an account? <a href="register.html">Create one</a>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    (function () {
+      const form       = document.getElementById('loginForm');
+      const emailInput = document.getElementById('email');
+      const passInput  = document.getElementById('password');
+      const emailErr   = document.getElementById('emailError');
+      const passErr    = document.getElementById('passwordError');
+      const alert      = document.getElementById('loginAlert');
+      const toggleBtn  = document.getElementById('togglePassword');
+
+      // --- Helpers ---
+      function setValid(input, errEl) {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        errEl.classList.remove('visible');
+      }
+
+      function setInvalid(input, errEl, msg) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        errEl.textContent = msg;
+        errEl.classList.add('visible');
+      }
+
+      function clearState(input, errEl) {
+        input.classList.remove('is-invalid', 'is-valid');
+        errEl.classList.remove('visible');
+      }
+
+      function isValidEmail(val) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+      }
+
+      // --- Validate email ---
+      function validateEmail() {
+        const val = emailInput.value.trim();
+        if (!val) {
+          setInvalid(emailInput, emailErr, 'Email address is required.');
+          return false;
+        }
+        if (!isValidEmail(val)) {
+          setInvalid(emailInput, emailErr, 'Please enter a valid email address.');
+          return false;
+        }
+        if (val.length > 254) {
+          setInvalid(emailInput, emailErr, 'Email must be 254 characters or fewer.');
+          return false;
+        }
+        setValid(emailInput, emailErr);
+        return true;
+      }
+
+      // --- Validate password ---
+      function validatePassword() {
+        const val = passInput.value;
+        if (!val) {
+          setInvalid(passInput, passErr, 'Password is required.');
+          return false;
+        }
+        setValid(passInput, passErr);
+        return true;
+      }
+
+      // --- Live validation on blur ---
+      emailInput.addEventListener('blur', validateEmail);
+      passInput.addEventListener('blur', validatePassword);
+
+      // Clear state on input
+      emailInput.addEventListener('input', function () {
+        if (emailInput.classList.contains('is-invalid')) validateEmail();
+        alert.classList.remove('visible');
+      });
+      passInput.addEventListener('input', function () {
+        if (passInput.classList.contains('is-invalid')) validatePassword();
+        alert.classList.remove('visible');
+      });
+
+      // --- Toggle password visibility ---
+      toggleBtn.addEventListener('click', function () {
+        const isHidden = passInput.type === 'password';
+        passInput.type = isHidden ? 'text' : 'password';
+        toggleBtn.textContent = isHidden ? '︶' : '👁';
+        toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+      });
+
+      // --- Form submission ---
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const emailOk = validateEmail();
+        const passOk  = validatePassword();
+
+        if (!emailOk || !passOk) return;
+
+        // Mock authentication — in a real app this would call the backend
+        const MOCK_USERS = [
+          { email: 'user@queuesmart.com',  password: 'User1234!',  role: 'user',  redirect: 'user-dashboard.html' },
+          { email: 'admin@queuesmart.com', password: 'Admin1234!', role: 'admin', redirect: 'admin-dashboard.html' },
+        ];
+
+        const email    = emailInput.value.trim().toLowerCase();
+        const password = passInput.value;
+        const match    = MOCK_USERS.find(u => u.email === email && u.password === password);
+
+        if (match) {
+          // Simulate storing session
+          sessionStorage.setItem('qs_user', JSON.stringify({ email: match.email, role: match.role }));
+          window.location.href = match.redirect;
+        } else {
+          alert.classList.add('visible');
+          passInput.value = '';
+          clearState(passInput, passErr);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
