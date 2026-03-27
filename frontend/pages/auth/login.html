@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login – QueueSmart</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="../../css/style.css" />
 </head>
 <body>
   <div class="auth-wrapper">
@@ -199,8 +199,10 @@
         toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
       });
 
+      const API = 'http://localhost:3000/api';
+
       // --- Form submission ---
-      form.addEventListener('submit', function (e) {
+      form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         const emailOk = validateEmail();
@@ -208,24 +210,42 @@
 
         if (!emailOk || !passOk) return;
 
-        // Mock authentication — in a real app this would call the backend
-        const MOCK_USERS = [
-          { email: 'user@queuesmart.com',  password: 'User1234!',  role: 'user',  redirect: 'user-dashboard.html' },
-          { email: 'admin@queuesmart.com', password: 'Admin1234!', role: 'admin', redirect: 'admin-dashboard.html' },
-        ];
+        const loginBtn = document.getElementById('loginBtn');
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Signing in…';
 
-        const email    = emailInput.value.trim().toLowerCase();
-        const password = passInput.value;
-        const match    = MOCK_USERS.find(u => u.email === email && u.password === password);
+        try {
+          const res = await fetch(API + '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: emailInput.value.trim().toLowerCase(),
+              password: passInput.value
+            })
+          });
+          const data = await res.json();
 
-        if (match) {
-          // Simulate storing session
-          sessionStorage.setItem('qs_user', JSON.stringify({ email: match.email, role: match.role }));
-          window.location.href = match.redirect;
-        } else {
+          if (res.ok) {
+            sessionStorage.setItem('qs_user', JSON.stringify({
+              id: data.user.id,
+              name: data.user.name,
+              email: data.user.email,
+              role: data.user.role
+            }));
+            const redirect = data.user.role === 'admin' ? '../admin/admin-dashboard.html' : 'user-dashboard.html';
+            window.location.href = redirect;
+          } else {
+            document.getElementById('loginAlertMsg').textContent = data.message || 'Invalid email or password.';
+            alert.classList.add('visible');
+            passInput.value = '';
+            clearState(passInput, passErr);
+          }
+        } catch (err) {
+          document.getElementById('loginAlertMsg').textContent = 'Could not connect to server. Please try again.';
           alert.classList.add('visible');
-          passInput.value = '';
-          clearState(passInput, passErr);
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Sign In';
         }
       });
     })();

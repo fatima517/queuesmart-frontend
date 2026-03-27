@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifications – QueueSmart</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../../css/style.css">
     <style>
         .user-nav {
             background: var(--surface);
@@ -77,47 +77,65 @@
 
     <script>
         (function() {
+            const API = 'http://localhost:3000/api';
             const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
             if (!user.email) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            let notifications = JSON.parse(localStorage.getItem('qs_notifications') || '[]');
-            const currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+            const TYPE_ICONS = { joined: '📍', almost: '🔔', served: '✓', welcome: '🔔' };
 
-            if (notifications.length === 0 && currentQueue) {
-                notifications = [
-                    { icon: '📍', title: 'Queue joined', message: 'You joined the queue for ' + currentQueue.serviceName + '. Your position: #' + currentQueue.position, time: 'Just now', unread: true },
-                    { icon: '⏱️', title: 'Wait time update', message: 'Estimated wait for ' + (currentQueue.serviceName || 'your queue') + ': ' + (currentQueue.waitTime || 15) + ' minutes', time: '5 min ago', unread: false }
-                ];
-            } else if (notifications.length === 0) {
-                notifications = [
-                    { icon: '🔔', title: 'Welcome to QueueSmart', message: 'Join a queue to get started. You will receive notifications when it is almost your turn.', time: 'Today', unread: false },
-                    { icon: '✓', title: 'No active queues', message: 'You are not currently in any queue. Visit Join Queue to get in line.', time: 'Today', unread: false }
-                ];
+            function formatTime(timestamp) {
+                if (!timestamp) return '';
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMin = Math.floor(diffMs / 60000);
+                if (diffMin < 1) return 'Just now';
+                if (diffMin < 60) return diffMin + ' min ago';
+                const diffHr = Math.floor(diffMin / 60);
+                if (diffHr < 24) return diffHr + ' hr ago';
+                return date.toLocaleDateString();
             }
 
-            const list = document.getElementById('notifList');
-            if (notifications.length === 0) {
-                list.innerHTML = `
-                    <div class="notif-empty">
-                        <div class="icon">🔔</div>
-                        <p>No notifications yet</p>
-                    </div>
-                `;
-            } else {
-                list.innerHTML = notifications.map(n => `
-                    <div class="notif-item ${n.unread ? 'unread' : ''}">
-                        <span class="notif-icon">${n.icon || '🔔'}</span>
-                        <div class="notif-content">
-                            <h3>${n.title || 'Notification'}</h3>
-                            <p>${n.message || ''}</p>
-                            <span>${n.time || ''}</span>
+            async function loadNotifications() {
+                const list = document.getElementById('notifList');
+                try {
+                    const res = await fetch(API + '/notifications/' + user.id);
+                    const notifications = await res.json();
+
+                    if (!Array.isArray(notifications) || notifications.length === 0) {
+                        list.innerHTML = `
+                            <div class="notif-empty">
+                                <div class="icon">🔔</div>
+                                <p>No notifications yet</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const sorted = [...notifications].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    list.innerHTML = sorted.map(n => `
+                        <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n.id}">
+                            <span class="notif-icon">${TYPE_ICONS[n.type] || '🔔'}</span>
+                            <div class="notif-content">
+                                <h3>${n.type === 'joined' ? 'Queue joined' : n.type === 'almost' ? 'Almost your turn' : n.type === 'served' ? 'It\'s your turn!' : 'Notification'}</h3>
+                                <p>${n.message || ''}</p>
+                                <span>${formatTime(n.timestamp)}</span>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+
+                    sorted.filter(n => !n.read).forEach(n => {
+                        fetch(API + '/notifications/' + n.id + '/read', { method: 'PUT' });
+                    });
+                } catch (err) {
+                    list.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Could not load notifications.</p>';
+                }
             }
+
+            loadNotifications();
         })();
     </script>
 </body>

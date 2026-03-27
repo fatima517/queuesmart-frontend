@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join Queue – QueueSmart</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../../css/style.css">
     <style>
         .user-nav {
             background: var(--surface);
@@ -102,126 +102,149 @@
 
     <script>
         (function() {
+            const API = 'http://localhost:3000/api';
             const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
             if (!user.email) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            const services = [
-                { id: 'bank', name: 'Bank Teller', wait: 25, status: 'open', count: 8 },
-                { id: 'support', name: 'Customer Support', wait: 10, status: 'open', count: 3 },
-                { id: 'pharmacy', name: 'Pharmacy Pickup', wait: null, status: 'closed', count: 0 }
-            ];
-
-            let currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
-            const urlParams = new URLSearchParams(window.location.search);
-            const preselected = urlParams.get('service');
+            let services = [];
+            let currentQueue = null;
             let selectedService = null;
-            if (currentQueue) {
-                const m = services.find(s => s.id === currentQueue.serviceId);
-                if (m) selectedService = { id: m.id, name: m.name, wait: m.wait };
-            }
 
             function renderOptions() {
                 const container = document.getElementById('serviceOptions');
+                if (services.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">Loading services…</p>';
+                    return;
+                }
                 container.innerHTML = services.map(s => {
                     const isSelected = selectedService && selectedService.id === s.id;
                     const inThisQueue = currentQueue && currentQueue.serviceId === s.id;
-                    const isDisabled = s.status === 'closed';
+                    const waitMin = s.expectedDuration ? s.expectedDuration + ' min' : '—';
                     return `
-                        <div class="service-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
-                             data-id="${s.id}" data-name="${s.name}" data-wait="${s.wait || 0}" data-status="${s.status}">
+                        <div class="service-option ${isSelected ? 'selected' : ''}"
+                             data-id="${s.id}" data-name="${s.name}" data-duration="${s.expectedDuration || 0}">
                             <div class="service-option-info">
-                                <h3>${s.name} ${inThisQueue ? '(You are in this queue)' : ''}</h3>
-                                <p>${s.status === 'open' ? 'Est. ' + s.wait + ' min · ' + s.count + ' in line' : 'Currently closed'}</p>
+                                <h3>${s.name}${inThisQueue ? ' (You are in this queue)' : ''}</h3>
+                                <p>Est. ${waitMin} per person</p>
                             </div>
                         </div>
                     `;
                 }).join('');
 
-                container.querySelectorAll('.service-option:not(.disabled)').forEach(el => {
+                container.querySelectorAll('.service-option').forEach(el => {
                     el.addEventListener('click', () => {
-                        selectedService = { id: el.dataset.id, name: el.dataset.name, wait: parseInt(el.dataset.wait) || 0 };
+                        selectedService = { id: el.dataset.id, name: el.dataset.name, duration: parseInt(el.dataset.duration) || 0 };
                         renderOptions();
-                        updateWaitDisplay();
-                        const inThisQueue = currentQueue && currentQueue.serviceId === selectedService.id;
-                        const inOtherQueue = currentQueue && currentQueue.serviceId !== selectedService.id;
-                        document.getElementById('joinBtn').textContent = inThisQueue ? 'View Queue Status' : 'Join Queue';
-                        document.getElementById('joinBtn').disabled = inOtherQueue;
-                        document.getElementById('joinBtn').style.display = 'block';
-                        document.getElementById('leaveBtn').style.display = inThisQueue ? 'block' : 'none';
+                        updateButtons();
                     });
                 });
-
-                if (preselected && !selectedService) {
-                    const match = services.find(s => s.id === preselected);
-                    if (match && match.status === 'open') {
-                        const el = container.querySelector(`[data-id="${preselected}"]`);
-                        if (el && !el.classList.contains('disabled')) {
-                            el.click();
-                        }
-                    }
-                }
             }
 
-            function updateWaitDisplay() {
+            function updateWaitDisplay(waitTime) {
                 const el = document.getElementById('waitValue');
-                if (selectedService) {
-                    el.textContent = selectedService.wait ? selectedService.wait + ' min' : '—';
+                el.textContent = waitTime ? waitTime + ' min' : '—';
+            }
+
+            function updateButtons() {
+                const joinBtn = document.getElementById('joinBtn');
+                const leaveBtn = document.getElementById('leaveBtn');
+                if (!selectedService) {
+                    joinBtn.disabled = true;
+                    joinBtn.textContent = 'Join Queue';
+                    leaveBtn.style.display = 'none';
+                    updateWaitDisplay(null);
+                    return;
+                }
+                const inThisQueue = currentQueue && currentQueue.serviceId === selectedService.id;
+                const inOtherQueue = currentQueue && currentQueue.serviceId !== selectedService.id;
+                joinBtn.textContent = inThisQueue ? 'View Queue Status' : 'Join Queue';
+                joinBtn.disabled = !!inOtherQueue;
+                leaveBtn.style.display = inThisQueue ? 'block' : 'none';
+                if (inThisQueue && currentQueue.waitTime) {
+                    updateWaitDisplay(currentQueue.waitTime);
                 } else {
-                    el.textContent = '—';
+                    updateWaitDisplay(null);
                 }
             }
 
-            document.getElementById('joinBtn').addEventListener('click', () => {
+            document.getElementById('joinBtn').addEventListener('click', async () => {
                 if (!selectedService) return;
                 if (currentQueue && currentQueue.serviceId === selectedService.id) {
-                    window.location.href = 'queue-status.html?service=' + selectedService.id;
+                    window.location.href = 'queue-status.html';
                     return;
                 }
                 if (currentQueue) return;
-                const position = Math.floor(Math.random() * 5) + 1;
-                const newQueue = {
-                    serviceId: selectedService.id,
-                    serviceName: selectedService.name,
-                    position,
-                    waitTime: selectedService.wait,
-                    joinedAt: new Date().toISOString()
-                };
-                localStorage.setItem('qs_current_queue', JSON.stringify(newQueue));
-                const history = JSON.parse(localStorage.getItem('qs_history') || '[]');
-                history.unshift({
-                    serviceName: selectedService.name,
-                    serviceId: selectedService.id,
-                    date: new Date().toLocaleDateString(),
-                    outcome: 'waiting',
-                    joinedAt: new Date().toISOString()
-                });
-                localStorage.setItem('qs_history', JSON.stringify(history));
-                window.location.href = 'queue-status.html?service=' + selectedService.id;
-            });
 
-            document.getElementById('leaveBtn').addEventListener('click', () => {
-                if (!selectedService || !currentQueue) return;
-                if (confirm('Leave this queue?')) {
-                    localStorage.removeItem('qs_current_queue');
-                    const history = JSON.parse(localStorage.getItem('qs_history') || '[]');
-                    const latest = history.find(h => h.serviceId === currentQueue.serviceId && h.outcome === 'waiting');
-                    if (latest) latest.outcome = 'left';
-                    localStorage.setItem('qs_history', JSON.stringify(history));
-                    window.location.href = 'user-dashboard.html';
+                const joinBtn = document.getElementById('joinBtn');
+                joinBtn.disabled = true;
+                joinBtn.textContent = 'Joining…';
+
+                try {
+                    const res = await fetch(API + '/queue/join', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id, serviceId: selectedService.id })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        currentQueue = data.queueEntry;
+                        window.location.href = 'queue-status.html';
+                    } else {
+                        alert(data.message || 'Could not join queue.');
+                        joinBtn.disabled = false;
+                        joinBtn.textContent = 'Join Queue';
+                    }
+                } catch (err) {
+                    alert('Could not connect to server.');
+                    joinBtn.disabled = false;
+                    joinBtn.textContent = 'Join Queue';
                 }
             });
 
-            renderOptions();
-            updateWaitDisplay();
-            if (currentQueue && selectedService) {
-                document.getElementById('joinBtn').textContent = 'View Queue Status';
-                document.getElementById('joinBtn').disabled = false;
-                document.getElementById('joinBtn').style.display = 'block';
-                document.getElementById('leaveBtn').style.display = 'block';
+            document.getElementById('leaveBtn').addEventListener('click', async () => {
+                if (!currentQueue) return;
+                if (!confirm('Leave this queue?')) return;
+
+                try {
+                    const res = await fetch(API + '/queue/leave/' + user.id, { method: 'DELETE' });
+                    if (res.ok) {
+                        currentQueue = null;
+                        window.location.href = 'user-dashboard.html';
+                    } else {
+                        const data = await res.json();
+                        alert(data.message || 'Could not leave queue.');
+                    }
+                } catch (err) {
+                    alert('Could not connect to server.');
+                }
+            });
+
+            async function init() {
+                try {
+                    const [servicesRes, statusRes] = await Promise.all([
+                        fetch(API + '/services'),
+                        fetch(API + '/queue/status/' + user.id)
+                    ]);
+                    services = await servicesRes.json();
+                    if (statusRes.ok) {
+                        const statusData = await statusRes.json();
+                        currentQueue = statusData.queueEntry;
+                        if (currentQueue) {
+                            selectedService = services.find(s => s.id === currentQueue.serviceId) || null;
+                            if (selectedService) selectedService = { id: selectedService.id, name: selectedService.name, duration: selectedService.expectedDuration };
+                        }
+                    }
+                } catch (err) {
+                    services = [];
+                }
+                renderOptions();
+                updateButtons();
             }
+
+            init();
         })();
     </script>
 </body>

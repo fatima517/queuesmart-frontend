@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue Status – QueueSmart</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../../css/style.css">
     <style>
         .user-nav {
             background: var(--surface);
@@ -111,66 +111,69 @@
 
     <script>
         (function() {
+            const API = 'http://localhost:3000/api';
             const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
             if (!user.email) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const serviceId = urlParams.get('service');
-            let currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+            function renderStatus(position, waitTime, serviceName) {
+                document.getElementById('serviceTitle').textContent = serviceName;
+                document.getElementById('positionValue').textContent = position;
+                document.getElementById('waitValue').textContent = waitTime + ' min';
 
-            if (!currentQueue || (serviceId && currentQueue.serviceId !== serviceId)) {
-                if (serviceId) {
-                    const services = { bank: 'Bank Teller', support: 'Customer Support', pharmacy: 'Pharmacy Pickup' };
-                    currentQueue = {
-                        serviceId,
-                        serviceName: services[serviceId] || 'Service',
-                        position: 3,
-                        waitTime: 15,
-                        joinedAt: new Date().toISOString(),
-                        status: 'waiting'
-                    };
-                    localStorage.setItem('qs_current_queue', JSON.stringify(currentQueue));
-                } else {
-                    window.location.href = 'user-dashboard.html';
-                    return;
+                const steps = [
+                    { icon: '⏳', title: 'Waiting', desc: 'You are in the queue' },
+                    { icon: '🔔', title: 'Almost ready', desc: '2 people or fewer ahead of you' },
+                    { icon: '✓', title: 'Served', desc: 'Your turn has come' }
+                ];
+                const activeStep = position > 2 ? 0 : position > 1 ? 1 : 2;
+                document.getElementById('statusSteps').innerHTML = steps.map((s, i) => `
+                    <div class="status-step ${i < activeStep ? 'done' : ''} ${i === activeStep ? 'active' : ''}">
+                        <span class="step-icon">${s.icon}</span>
+                        <div class="step-content">
+                            <h3>${s.title}</h3>
+                            <p>${s.desc}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async function loadStatus() {
+                try {
+                    const res = await fetch(API + '/queue/status/' + user.id);
+                    if (res.ok) {
+                        const data = await res.json();
+                        renderStatus(data.position, data.waitTime, data.serviceName);
+                    } else {
+                        document.getElementById('serviceTitle').textContent = 'No Active Queue';
+                        document.getElementById('positionValue').textContent = '—';
+                        document.getElementById('waitValue').textContent = '—';
+                        document.getElementById('statusSteps').innerHTML = '<p style="color:var(--text-muted);text-align:center;">You are not currently in a queue.</p>';
+                        document.getElementById('leaveBtn').style.display = 'none';
+                    }
+                } catch (err) {
+                    document.getElementById('serviceTitle').textContent = 'Error loading status';
                 }
             }
 
-            const steps = [
-                { id: 'waiting', icon: '⏳', title: 'Waiting', desc: 'You are in the queue', done: true },
-                { id: 'almost', icon: '🔔', title: 'Almost ready', desc: '2 people ahead of you', done: currentQueue.position <= 2 },
-                { id: 'served', icon: '✓', title: 'Served', desc: 'Your turn has come', done: currentQueue.position <= 1 }
-            ];
-
-            document.getElementById('serviceTitle').textContent = currentQueue.serviceName;
-            document.getElementById('serviceSubtitle').textContent = 'Your position and estimated wait';
-            document.getElementById('positionValue').textContent = currentQueue.position;
-            document.getElementById('waitValue').textContent = currentQueue.waitTime + ' min';
-
-            const activeStep = currentQueue.position > 2 ? 0 : currentQueue.position > 1 ? 1 : 2;
-            document.getElementById('statusSteps').innerHTML = steps.map((s, i) => `
-                <div class="status-step ${i < activeStep ? 'done' : ''} ${i === activeStep ? 'active' : ''}">
-                    <span class="step-icon">${s.icon}</span>
-                    <div class="step-content">
-                        <h3>${s.title}</h3>
-                        <p>${s.desc}</p>
-                    </div>
-                </div>
-            `).join('');
-
-            document.getElementById('leaveBtn').addEventListener('click', () => {
-                if (confirm('Leave this queue?')) {
-                    localStorage.removeItem('qs_current_queue');
-                    const history = JSON.parse(localStorage.getItem('qs_history') || '[]');
-                    const latest = history.find(h => h.serviceId === currentQueue.serviceId && h.outcome === 'waiting');
-                    if (latest) latest.outcome = 'left';
-                    localStorage.setItem('qs_history', JSON.stringify(history));
-                    window.location.href = 'user-dashboard.html';
+            document.getElementById('leaveBtn').addEventListener('click', async () => {
+                if (!confirm('Leave this queue?')) return;
+                try {
+                    const res = await fetch(API + '/queue/leave/' + user.id, { method: 'DELETE' });
+                    if (res.ok) {
+                        window.location.href = 'user-dashboard.html';
+                    } else {
+                        const data = await res.json();
+                        alert(data.message || 'Could not leave queue.');
+                    }
+                } catch (err) {
+                    alert('Could not connect to server.');
                 }
             });
+
+            loadStatus();
         })();
     </script>
 </body>

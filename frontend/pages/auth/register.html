@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Register – QueueSmart</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="../../css/style.css" />
 </head>
 <body>
   <div class="auth-wrapper">
@@ -370,8 +370,10 @@
       makeToggle(document.getElementById('togglePassword'), passInput);
       makeToggle(document.getElementById('toggleConfirm'), confirmInput);
 
+      const API = 'http://localhost:3000/api';
+
       // --- Form submission ---
-      form.addEventListener('submit', function (e) {
+      form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         successAlert.classList.remove('visible');
@@ -385,21 +387,40 @@
 
         if (!nameOk || !emailOk || !passOk || !confirmOk || !termsOk) return;
 
-        // Mock registration — store in sessionStorage and redirect
-        const userData = {
-          name:  nameInput.value.trim(),
-          email: emailInput.value.trim().toLowerCase(),
-          role:  'user',
-        };
-        sessionStorage.setItem('qs_user', JSON.stringify(userData));
-        sessionStorage.setItem('qs_registered', '1');
+        const registerBtn = document.getElementById('registerBtn');
+        registerBtn.disabled = true;
+        registerBtn.textContent = 'Creating account…';
 
-        successAlert.classList.add('visible');
-        form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+        try {
+          const res = await fetch(API + '/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: nameInput.value.trim(),
+              email: emailInput.value.trim().toLowerCase(),
+              password: passInput.value
+            })
+          });
+          const data = await res.json();
 
-        setTimeout(function () {
-          window.location.href = 'login.html';
-        }, 1800);
+          if (res.ok) {
+            successAlert.classList.add('visible');
+            form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+            setTimeout(function () {
+              window.location.href = 'login.html';
+            }, 1800);
+          } else {
+            errorAlertMsg.textContent = data.message || 'Registration failed. Please try again.';
+            errorAlert.classList.add('visible');
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Create Account';
+          }
+        } catch (err) {
+          errorAlertMsg.textContent = 'Could not connect to server. Please try again.';
+          errorAlert.classList.add('visible');
+          registerBtn.disabled = false;
+          registerBtn.textContent = 'Create Account';
+        }
       });
     })();
   </script>
