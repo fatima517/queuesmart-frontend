@@ -81,8 +81,9 @@
             <a href="join-queue.html">Join Queue</a>
             <a href="queue-status.html" class="active">Queue Status</a>
             <a href="notifications.html">Notifications</a>
+            <a href="../../history.html">History</a>
         </div>
-        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+        <a href="../auth/login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
     </nav>
 
     <div class="status-wrapper">
@@ -109,12 +110,13 @@
         <button class="btn btn-outline-danger leave-btn" id="leaveBtn">Leave Queue</button>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
         (function() {
-            const API = 'http://localhost:3000/api';
-            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            const API = window.QS.api.getApiBase();
+            const user = window.QS.api.getCurrentUser();
             if (!user.email) {
-                window.location.href = 'login.html';
+                window.location.href = '../auth/login.html';
                 return;
             }
 

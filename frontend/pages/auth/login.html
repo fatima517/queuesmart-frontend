@@ -114,6 +114,7 @@
 
   </div>
 
+  <script src="../../js/api.js"></script>
   <script>
     (function () {
       const form       = document.getElementById('loginForm');
@@ -199,7 +200,7 @@
         toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
       });
 
-      const API = 'http://localhost:3000/api';
+      const API = window.QS.api.getApiBase();
 
       // --- Form submission ---
       form.addEventListener('submit', async function (e) {
@@ -232,7 +233,9 @@
               email: data.user.email,
               role: data.user.role
             }));
-            const redirect = data.user.role === 'admin' ? '../admin/admin-dashboard.html' : '../user/user-dashboard.html';
+            const role = data.user.role;
+            const isAdmin = role === 'admin' || role === 'administrator';
+            const redirect = isAdmin ? '../admin/admin-dashboard.html' : '../user/user-dashboard.html';
             window.location.href = redirect;
           } else {
             document.getElementById('loginAlertMsg').textContent = data.message || 'Invalid email or password.';

@@ -181,8 +181,9 @@
             <a href="join-queue.html">Join Queue</a>
             <a href="queue-status.html">Queue Status</a>
             <a href="notifications.html">Notifications</a>
+            <a href="../../history.html">History</a>
         </div>
-        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+        <a href="../auth/login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
     </nav>
 
     <div class="dashboard-wrapper">
@@ -213,12 +214,13 @@
         </div>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
         (function() {
-            const API = 'http://localhost:3000/api';
-            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            const API = window.QS.api.getApiBase();
+            const user = window.QS.api.getCurrentUser();
             if (!user.email) {
-                window.location.href = 'login.html';
+                window.location.href = '../auth/login.html';
                 return;
             }
 
@@ -259,10 +261,10 @@
                 }
                 grid.innerHTML = services.map(s => `
                     <div class="service-card">
-                        <h3>${s.name}</h3>
+                        <h3>${s.name || s.service_name || ''}</h3>
                         <p>${s.description || ''}</p>
                         <div class="service-meta">
-                            <span>⏱️ ${s.expectedDuration ? s.expectedDuration + ' min per person' : '—'}</span>
+                            <span>⏱️ ${(s.expectedDuration != null || s.expected_duration != null) ? (s.expectedDuration || s.expected_duration) + ' min per person' : '—'}</span>
                         </div>
                         <span class="status-badge open">OPEN</span>
                         <div style="margin-top: 16px;">
@@ -298,13 +300,15 @@
                         fetch(API + '/notifications/' + user.id)
                     ]);
 
-                    const services = servicesRes.ok ? await servicesRes.json() : [];
+                    const rawServices = servicesRes.ok ? await servicesRes.json() : [];
+                    const services = window.QS.api.mapServices(rawServices);
                     const queueData = statusRes.ok ? await statusRes.json() : null;
-                    const notifs = notifsRes.ok ? await notifsRes.json() : [];
+                    const rawNotifs = notifsRes.ok ? await notifsRes.json() : [];
+                    const notifs = window.QS.api.mapNotifications(Array.isArray(rawNotifs) ? rawNotifs : []);
 
                     renderQueueStatus(queueData);
                     renderServices(services);
-                    renderNotifications(Array.isArray(notifs) ? notifs : []);
+                    renderNotifications(notifs);
                 } catch (err) {
                     document.getElementById('servicesGrid').innerHTML = '<p style="color:var(--text-muted);">Could not load services.</p>';
                 }

@@ -33,6 +33,13 @@ jest.mock('../src/models/notificationModel', () => ({
 const request = require('supertest')
 const app = require('../server')
 const db = require('../src/config/db')
+
+function mockDbQueryResult(rows) {
+  return (query, paramsOrCb, maybeCb) => {
+    const cb = typeof paramsOrCb === 'function' ? paramsOrCb : maybeCb
+    cb(null, rows)
+  }
+}
 const QueueEntry = require('../src/models/queueEntryModel')
 const Queue = require('../src/models/queueModel')
 const Service = require('../src/models/serviceModel')
@@ -82,6 +89,18 @@ describe('POST /api/queue/join', () => {
     const res = await request(app).post('/api/queue/join').send({ user_id: 1 })
     expect(res.status).toBe(400)
     expect(res.body.message).toBe('user_id and service_id are required')
+  })
+
+  test('should accept camelCase userId and serviceId', async () => {
+    Service.getById.mockImplementation((id, cb) => cb(null, [mockService]))
+    Queue.getByServiceId.mockImplementation((id, cb) => cb(null, [mockQueue]))
+    QueueEntry.getQueueEntries.mockImplementation((id, cb) => cb(null, []))
+    QueueEntry.joinQueue.mockImplementation((qid, uid, pos, cb) => cb(null, { insertId: 1 }))
+
+    const res = await request(app).post('/api/queue/join').send({ userId: 1, serviceId: 1 })
+    expect(res.status).toBe(201)
+    expect(res.body.queueEntry.user_id).toBe(1)
+    expect(res.body.queueEntry.service_id).toBe(1)
   })
 
   test('should fail if service does not exist', async () => {
@@ -221,7 +240,7 @@ describe('DELETE /api/queue/leave/:userId', () => {
 
 describe('GET /api/queue', () => {
   test('should return all waiting queue entries', async () => {
-    db.query.mockImplementation((query, cb) => cb(null, [{ ...mockEntry, service_name: 'General Consultation', expected_duration: 10 }]))
+    db.query.mockImplementation(mockDbQueryResult([{ ...mockEntry, service_name: 'General Consultation', expected_duration: 10 }]))
 
     const res = await request(app).get('/api/queue')
     expect(res.status).toBe(200)
@@ -229,7 +248,7 @@ describe('GET /api/queue', () => {
   })
 
   test('should return empty array when queue is empty', async () => {
-    db.query.mockImplementation((query, cb) => cb(null, []))
+    db.query.mockImplementation(mockDbQueryResult([]))
 
     const res = await request(app).get('/api/queue')
     expect(res.status).toBe(200)
@@ -239,7 +258,7 @@ describe('GET /api/queue', () => {
 
 describe('POST /api/queue/serve-next', () => {
   test('should serve the next person in queue', async () => {
-    db.query.mockImplementationOnce((query, cb) => cb(null, [{ ...mockEntry, service_id: 1 }]))
+    db.query.mockImplementationOnce(mockDbQueryResult([{ ...mockEntry, service_id: 1 }]))
     QueueEntry.updateStatus.mockImplementation((id, status, cb) => cb(null))
     Service.getById.mockImplementation((id, cb) => cb(null, [mockService]))
 
@@ -249,7 +268,7 @@ describe('POST /api/queue/serve-next', () => {
   })
 
   test('should fail when queue is empty', async () => {
-    db.query.mockImplementationOnce((query, cb) => cb(null, []))
+    db.query.mockImplementationOnce(mockDbQueryResult([]))
 
     const res = await request(app).post('/api/queue/serve-next')
     expect(res.status).toBe(404)
@@ -257,7 +276,7 @@ describe('POST /api/queue/serve-next', () => {
   })
 
   test('should create a served notification', async () => {
-    db.query.mockImplementationOnce((query, cb) => cb(null, [{ ...mockEntry, service_id: 1 }]))
+    db.query.mockImplementationOnce(mockDbQueryResult([{ ...mockEntry, service_id: 1 }]))
     QueueEntry.updateStatus.mockImplementation((id, status, cb) => cb(null))
     Service.getById.mockImplementation((id, cb) => cb(null, [mockService]))
 
@@ -266,11 +285,24 @@ describe('POST /api/queue/serve-next', () => {
   })
 
   test('should update entry status to served', async () => {
-    db.query.mockImplementationOnce((query, cb) => cb(null, [{ ...mockEntry, service_id: 1 }]))
+    db.query.mockImplementationOnce(mockDbQueryResult([{ ...mockEntry, service_id: 1 }]))
     QueueEntry.updateStatus.mockImplementation((id, status, cb) => cb(null))
     Service.getById.mockImplementation((id, cb) => cb(null, [mockService]))
 
     await request(app).post('/api/queue/serve-next')
     expect(QueueEntry.updateStatus).toHaveBeenCalledWith(1, 'served', expect.any(Function))
+  })
+
+  test('should pass service_id filter to db when serving next', async () => {
+    db.query.mockImplementationOnce((query, params, cb) => {
+      expect(params).toEqual([2])
+      cb(null, [{ ...mockEntry, entry_id: 5, service_id: 2 }])
+    })
+    QueueEntry.updateStatus.mockImplementation((id, status, cb) => cb(null))
+    Service.getById.mockImplementation((id, cb) => cb(null, [{ ...mockService, service_id: 2 }]))
+
+    const res = await request(app).post('/api/queue/serve-next').send({ service_id: 2 })
+    expect(res.status).toBe(200)
+    expect(res.body.served.service_id).toBe(2)
   })
 })

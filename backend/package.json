@@ -4,7 +4,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest --coverage"
+    "test": "jest --coverage",
+    "smoke": "node scripts/smoke.js",
+    "setup": "node scripts/setup-all.js",
+    "verify": "node --check scripts/smoke.js && node --check scripts/setup-all.js && jest --coverage"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

@@ -222,11 +222,11 @@
         <div class="form-section">
             <h2 style="margin-top: 0;">Add New Service</h2>
             
-            <form id="serviceForm" onsubmit="return validateForm()">
+            <form id="serviceForm">
                 <div class="form-group">
                     <label>Service Name <span class="required">*</span></label>
-                    <input type="text" id="serviceName" maxlength="100" placeholder="e.g., Bank Teller">
-                    <span class="field-hint">Maximum 100 characters</span>
+                    <input type="text" id="serviceName" maxlength="50" placeholder="e.g., Bank Teller">
+                    <span class="field-hint">Maximum 50 characters (API limit)</span>
                     <div class="field-error" id="nameError">Service name is required</div>
                 </div>
                 
@@ -270,20 +270,7 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-        
-                    <tr>
-                        <td>Customer Support</td>
-                        <td>Account questions and issues</td>
-                        <td>10 min</td>
-                        <td><span class="priority-badge priority-medium">Medium</span></td>
-                        <td>
-                            <button class="action-btn" onclick="alert('Edit service (mock)')">Edit</button>
-                            <button class="action-btn delete" onclick="alert('Delete service (mock)')">Delete</button>
-                        </td>
-                    </tr>
-                    
-                </tbody>
+                <tbody id="servicesTableBody"></tbody>
             </table>
         </div>
         
@@ -292,52 +279,127 @@
         </div>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
-        function validateForm() {
-            // Get form values
-            let name = document.getElementById('serviceName').value.trim();
-            let desc = document.getElementById('description').value.trim();
-            let duration = document.getElementById('duration').value;
-            let priority = document.getElementById('priority').value;
-            
-            // Reset error messages
-            document.querySelectorAll('.field-error').forEach(el => {
-                el.classList.remove('visible');
+        (function () {
+            var API = window.QS.api.getApiBase();
+
+            function priorityClass(level) {
+                var l = (level || 'medium').toLowerCase();
+                if (l === 'high') return 'priority-high';
+                if (l === 'low') return 'priority-low';
+                return 'priority-medium';
+            }
+
+            function renderTable(services) {
+                var tbody = document.getElementById('servicesTableBody');
+                if (!services.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">No services yet. Create one above.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = services.map(function (s) {
+                    var badge = '<span class="priority-badge ' + priorityClass(s.priority_level) + '">' +
+                        (s.priority_level || '').charAt(0).toUpperCase() + (s.priority_level || '').slice(1) + '</span>';
+                    return (
+                        '<tr>' +
+                        '<td>' + (s.service_name || '') + '</td>' +
+                        '<td>' + (s.description || '') + '</td>' +
+                        '<td>' + (s.expected_duration != null ? s.expected_duration + ' min' : '—') + '</td>' +
+                        '<td>' + badge + '</td>' +
+                        '<td>' +
+                        '<button type="button" class="action-btn" data-edit-id="' + s.service_id + '">Edit</button>' +
+                        '</td></tr>'
+                    );
+                }).join('');
+
+                tbody.querySelectorAll('[data-edit-id]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = parseInt(btn.getAttribute('data-edit-id'), 10);
+                        var row = services.find(function (x) { return x.service_id === id; });
+                        if (!row) return;
+                        var nextName = window.prompt('New service name', row.service_name);
+                        if (nextName == null || !nextName.trim()) return;
+                        fetch(API + '/services/' + id, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: nextName.trim() })
+                        })
+                            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                            .then(function (x) {
+                                if (!x.ok) {
+                                    alert(x.d.message || 'Update failed');
+                                    return;
+                                }
+                                return loadServices();
+                            })
+                            .catch(function () { alert('Could not connect to server.'); });
+                    });
+                });
+            }
+
+            function loadServices() {
+                return fetch(API + '/services')
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        renderTable(Array.isArray(data) ? data : []);
+                    });
+            }
+
+            document.getElementById('serviceForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                var name = document.getElementById('serviceName').value.trim();
+                var desc = document.getElementById('description').value.trim();
+                var duration = document.getElementById('duration').value;
+                var priority = document.getElementById('priority').value;
+
+                document.querySelectorAll('.field-error').forEach(function (el) { el.classList.remove('visible'); });
+
+                var ok = true;
+                if (!name) {
+                    document.getElementById('nameError').classList.add('visible');
+                    ok = false;
+                }
+                if (!desc) {
+                    document.getElementById('descError').classList.add('visible');
+                    ok = false;
+                }
+                if (!duration || parseFloat(duration) < 1) {
+                    document.getElementById('durationError').classList.add('visible');
+                    ok = false;
+                }
+                if (!priority) {
+                    document.getElementById('priorityError').classList.add('visible');
+                    ok = false;
+                }
+                if (!ok) return;
+
+                fetch(API + '/services', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        description: desc,
+                        expectedDuration: Number(duration),
+                        priorityLevel: priority
+                    })
+                })
+                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                    .then(function (x) {
+                        if (!x.ok) {
+                            alert(x.d.message || 'Could not create service');
+                            return;
+                        }
+                        document.getElementById('serviceForm').reset();
+                        return loadServices();
+                    })
+                    .catch(function () { alert('Could not connect to server.'); });
             });
-            
-            let isValid = true;
-            
-            // name
-            if (!name) {
-                document.getElementById('nameError').classList.add('visible');
-                isValid = false;
-            }
-            
-            //  description
-            if (!desc) {
-                document.getElementById('descError').classList.add('visible');
-                isValid = false;
-            }
-            
-            //  duration
-            if (!duration || duration < 1) {
-                document.getElementById('durationError').classList.add('visible');
-                isValid = false;
-            }
-            
-            //  priority
-            if (!priority) {
-                document.getElementById('priorityError').classList.add('visible');
-                isValid = false;
-            }
-            
-            if (isValid) {
-                alert('✅ Service added successfully! (Mock data)');
-                document.getElementById('serviceForm').reset();
-            }
-            
-            return false; 
-        }
+
+            loadServices().catch(function () {
+                document.getElementById('servicesTableBody').innerHTML =
+                    '<tr><td colspan="5" style="color:#dc2626;">Could not load services.</td></tr>';
+            });
+        })();
     </script>
 </body>
 </html>

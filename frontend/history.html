@@ -65,12 +65,12 @@
 <body>
     <nav class="user-nav">
         <div class="user-nav-links">
-            <a href="user-dashboard.html" class="brand">QueueSmart</a>
-            <a href="user-dashboard.html">Dashboard</a>
-            <a href="join-queue.html">Join Queue</a>
+            <a href="pages/user/user-dashboard.html" class="brand">QueueSmart</a>
+            <a href="pages/user/user-dashboard.html">Dashboard</a>
+            <a href="pages/user/join-queue.html">Join Queue</a>
             <a href="history.html" class="active">History</a>
         </div>
-        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+        <a href="pages/auth/login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
     </nav>
 
     <div class="history-wrapper">
@@ -82,45 +82,60 @@
         <div class="history-list" id="historyList"></div>
     </div>
 
+    <script src="js/api.js"></script>
     <script>
         (function() {
-            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            var API = window.QS.api.getApiBase();
+            var user = window.QS.api.getCurrentUser();
             if (!user.email) {
-                window.location.href = 'login.html';
+                window.location.href = 'pages/auth/login.html';
                 return;
             }
 
-            let history = JSON.parse(localStorage.getItem('qs_history') || '[]');
-            const currentQueue = JSON.parse(localStorage.getItem('qs_current_queue') || 'null');
+            var list = document.getElementById('historyList');
 
-            if (history.length === 0) {
-                history = [
-                    { serviceName: 'Bank Teller', serviceId: 'bank', date: new Date().toLocaleDateString(), outcome: 'served' },
-                    { serviceName: 'Customer Support', serviceId: 'support', date: new Date(Date.now() - 86400000).toLocaleDateString(), outcome: 'left' }
-                ];
-                localStorage.setItem('qs_history', JSON.stringify(history));
-            }
-
-            const list = document.getElementById('historyList');
-            if (history.length === 0) {
+            function renderEmpty() {
                 list.innerHTML = `
                     <div class="history-empty">
                         <div class="icon">📋</div>
                         <p>No queue history yet</p>
-                        <a href="join-queue.html" class="btn btn-primary" style="width: auto; margin-top: 16px; display: inline-block;">Join a Queue</a>
+                        <a href="pages/user/join-queue.html" class="btn btn-primary" style="width: auto; margin-top: 16px; display: inline-block;">Join a Queue</a>
                     </div>
                 `;
-            } else {
-                list.innerHTML = history.map(item => `
+            }
+
+            function renderRows(rows) {
+                list.innerHTML = rows.map(function (row) {
+                    var item = window.QS.api.mapHistoryRow(row);
+                    return `
                     <div class="history-item">
                         <div class="history-info">
                             <h3>${item.serviceName}</h3>
                             <p>${item.date}</p>
                         </div>
                         <span class="outcome-badge ${item.outcome}">${item.outcome.toUpperCase()}</span>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
             }
+
+            fetch(API + '/history/' + user.id)
+                .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+                .then(function (_ref) {
+                    var res = _ref.res;
+                    var data = _ref.data;
+                    if (res.status === 404) {
+                        renderEmpty();
+                        return;
+                    }
+                    if (!res.ok || !Array.isArray(data) || data.length === 0) {
+                        renderEmpty();
+                        return;
+                    }
+                    renderRows(data);
+                })
+                .catch(function () {
+                    list.innerHTML = '<p style="color:var(--text-muted);padding:24px;">Could not load history.</p>';
+                });
         })();
     </script>
 </body>

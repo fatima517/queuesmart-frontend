@@ -180,6 +180,7 @@
 
   </div>
 
+  <script src="../../js/api.js"></script>
   <script>
     (function () {
       const form          = document.getElementById('registerForm');
@@ -370,7 +371,7 @@
       makeToggle(document.getElementById('togglePassword'), passInput);
       makeToggle(document.getElementById('toggleConfirm'), confirmInput);
 
-      const API = 'http://localhost:3000/api';
+      const API = window.QS.api.getApiBase();
 
       // --- Form submission ---
       form.addEventListener('submit', async function (e) {

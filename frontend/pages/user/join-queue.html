@@ -74,8 +74,9 @@
             <a href="join-queue.html" class="active">Join Queue</a>
             <a href="queue-status.html">Queue Status</a>
             <a href="notifications.html">Notifications</a>
+            <a href="../../history.html">History</a>
         </div>
-        <a href="login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
+        <a href="../auth/login.html" class="logout" onclick="sessionStorage.removeItem('qs_user'); return true;">Logout</a>
     </nav>
 
     <div class="join-wrapper">
@@ -100,12 +101,13 @@
         </div>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
         (function() {
-            const API = 'http://localhost:3000/api';
-            const user = JSON.parse(sessionStorage.getItem('qs_user') || '{}');
+            const API = window.QS.api.getApiBase();
+            const user = window.QS.api.getCurrentUser();
             if (!user.email) {
-                window.location.href = 'login.html';
+                window.location.href = '../auth/login.html';
                 return;
             }
 
@@ -120,8 +122,8 @@
                     return;
                 }
                 container.innerHTML = services.map(s => {
-                    const isSelected = selectedService && selectedService.id === s.id;
-                    const inThisQueue = currentQueue && currentQueue.serviceId === s.id;
+                    const isSelected = selectedService && String(selectedService.id) === String(s.id);
+                    const inThisQueue = currentQueue && String(currentQueue.service_id) === String(s.id);
                     const waitMin = s.expectedDuration ? s.expectedDuration + ' min' : '—';
                     return `
                         <div class="service-option ${isSelected ? 'selected' : ''}"
@@ -158,8 +160,8 @@
                     updateWaitDisplay(null);
                     return;
                 }
-                const inThisQueue = currentQueue && currentQueue.serviceId === selectedService.id;
-                const inOtherQueue = currentQueue && currentQueue.serviceId !== selectedService.id;
+                const inThisQueue = currentQueue && String(currentQueue.service_id) === String(selectedService.id);
+                const inOtherQueue = currentQueue && String(currentQueue.service_id) !== String(selectedService.id);
                 joinBtn.textContent = inThisQueue ? 'View Queue Status' : 'Join Queue';
                 joinBtn.disabled = !!inOtherQueue;
                 leaveBtn.style.display = inThisQueue ? 'block' : 'none';
@@ -172,7 +174,7 @@
 
             document.getElementById('joinBtn').addEventListener('click', async () => {
                 if (!selectedService) return;
-                if (currentQueue && currentQueue.serviceId === selectedService.id) {
+                if (currentQueue && String(currentQueue.service_id) === String(selectedService.id)) {
                     window.location.href = 'queue-status.html';
                     return;
                 }
@@ -186,7 +188,7 @@
                     const res = await fetch(API + '/queue/join', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user.id, serviceId: selectedService.id })
+                        body: JSON.stringify(window.QS.api.joinQueuePayload(user.id, selectedService.id))
                     });
                     const data = await res.json();
                     if (res.ok) {
@@ -228,13 +230,16 @@
                         fetch(API + '/services'),
                         fetch(API + '/queue/status/' + user.id)
                     ]);
-                    services = await servicesRes.json();
+                    const rawServices = servicesRes.ok ? await servicesRes.json() : [];
+                    services = window.QS.api.mapServices(rawServices);
                     if (statusRes.ok) {
                         const statusData = await statusRes.json();
                         currentQueue = statusData.queueEntry;
                         if (currentQueue) {
-                            selectedService = services.find(s => s.id === currentQueue.serviceId) || null;
-                            if (selectedService) selectedService = { id: selectedService.id, name: selectedService.name, duration: selectedService.expectedDuration };
+                            const match = services.find(s => String(s.id) === String(currentQueue.service_id));
+                            if (match) {
+                                selectedService = { id: match.id, name: match.name, duration: match.expectedDuration };
+                            }
                         }
                     }
                 } catch (err) {

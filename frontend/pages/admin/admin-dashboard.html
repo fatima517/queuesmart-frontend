@@ -160,77 +160,105 @@
             <!-- Stats Overview -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-value">156</div>
+                    <div class="stat-value" id="statCustomersToday">—</div>
                     <div class="stat-label">Customers Today</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">23</div>
+                    <div class="stat-value" id="statWaiting">0</div>
                     <div class="stat-label">Currently Waiting</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">12</div>
+                    <div class="stat-value" id="statServices">0</div>
                     <div class="stat-label">Active Services</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">8.5</div>
+                    <div class="stat-value" id="statAvgWait">—</div>
                     <div class="stat-label">Avg Wait (min)</div>
                 </div>
             </div>
 
             <h2 class="section-title">Current Queues</h2>
-            
-            <div class="services-grid">
-                <!-- Bank Teller -->
-                <div class="service-card">
-                    <h3>Bank Teller</h3>
-                    <div class="service-info">
-                        <p>Queue Length: <strong>8 people</strong></p>
-                        <p>Status: <span class="status-badge open">OPEN</span></p>
-                        <p>Est. Wait: <strong>25 min</strong></p>
-                    </div>
-                    <div class="button-group">
-                        <button class="btn btn-outline" onclick="toggleQueue('bank')">Close Queue</button>
-                        <button class="btn btn-primary" onclick="location.href='queue-management.html?service=bank'">Manage</button>
-                    </div>
-                </div>
-                
-                <!-- Customer Support -->
-                <div class="service-card">
-                    <h3>Customer Support</h3>
-                    <div class="service-info">
-                        <p>Queue Length: <strong>3 people</strong></p>
-                        <p>Status: <span class="status-badge open">OPEN</span></p>
-                        <p>Est. Wait: <strong>10 min</strong></p>
-                    </div>
-                    <div class="button-group">
-                        <button class="btn btn-outline" onclick="toggleQueue('support')">Close Queue</button>
-                        <button class="btn btn-primary" onclick="location.href='queue-management.html?service=support'">Manage</button>
-                    </div>
-                </div>
-                
-                <!-- Pharmacy Pickup -->
-                <div class="service-card">
-                    <h3>Pharmacy Pickup</h3>
-                    <div class="service-info">
-                        <p>Queue Length: <strong>12 people</strong></p>
-                        <p>Status: <span class="status-badge closed">CLOSED</span></p>
-                        <p>Est. Wait: <strong>—</strong></p>
-                    </div>
-                    <div class="button-group">
-                        <button class="btn btn-outline" onclick="toggleQueue('pharmacy')">Open Queue</button>
-                        <button class="btn btn-primary" onclick="location.href='queue-management.html?service=pharmacy'">Manage</button>
-                    </div>
-                </div>
-                
-                
-            </div>
+            <p style="color: var(--text-secondary); margin: -10px 0 20px; font-size: 14px;">
+                <a href="service-management.html">Manage services</a> · Data from the live queue API
+            </p>
+
+            <div class="services-grid" id="adminServicesGrid"></div>
         </div>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
-        function toggleQueue(service) {
-            alert(`Queue toggled for ${service} (UI simulation)`);
-        }
+        (function () {
+            var API = window.QS.api.getApiBase();
+
+            function avgWaitMinutes(queueRows) {
+                if (!queueRows.length) return null;
+                var sum = 0;
+                queueRows.forEach(function (r) {
+                    var pos = parseInt(r.position, 10) || 1;
+                    var dur = parseInt(r.expected_duration, 10) || 0;
+                    sum += pos * dur;
+                });
+                return Math.round((sum / queueRows.length) * 10) / 10;
+            }
+
+            function render(services, queueRows) {
+                var byService = {};
+                queueRows.forEach(function (r) {
+                    var sid = r.service_id;
+                    if (!byService[sid]) byService[sid] = [];
+                    byService[sid].push(r);
+                });
+
+                document.getElementById('statWaiting').textContent = String(queueRows.length);
+                document.getElementById('statServices').textContent = String(services.length);
+                var avg = avgWaitMinutes(queueRows);
+                document.getElementById('statAvgWait').textContent = avg != null ? String(avg) : '—';
+
+                var grid = document.getElementById('adminServicesGrid');
+                if (!services.length) {
+                    grid.innerHTML = '<p style="color:var(--text-muted);">No services in the database yet.</p>';
+                    return;
+                }
+
+                grid.innerHTML = services.map(function (s) {
+                    var sid = s.service_id;
+                    var rows = byService[sid] || [];
+                    var est = rows.length
+                        ? Math.max.apply(null, rows.map(function (r) {
+                            return (parseInt(r.position, 10) || 1) * (parseInt(r.expected_duration, 10) || 0);
+                        }))
+                        : null;
+                    return (
+                        '<div class="service-card">' +
+                        '<h3>' + (s.service_name || '') + '</h3>' +
+                        '<div class="service-info">' +
+                        '<p>Queue Length: <strong>' + rows.length + ' waiting</strong></p>' +
+                        '<p>Status: <span class="status-badge open">OPEN</span></p>' +
+                        '<p>Est. Wait (last in line): <strong>' + (est != null ? est + ' min' : '—') + '</strong></p>' +
+                        '</div>' +
+                        '<div class="button-group">' +
+                        '<button class="btn btn-primary" onclick="location.href=\'queue-management.html?service_id=' + sid + '\'">Manage queue</button>' +
+                        '</div>' +
+                        '</div>'
+                    );
+                }).join('');
+            }
+
+            Promise.all([
+                fetch(API + '/services').then(function (r) { return r.json(); }),
+                fetch(API + '/queue').then(function (r) { return r.json(); })
+            ])
+                .then(function (pair) {
+                    var services = Array.isArray(pair[0]) ? pair[0] : [];
+                    var queueRows = Array.isArray(pair[1]) ? pair[1] : [];
+                    render(services, queueRows);
+                })
+                .catch(function () {
+                    document.getElementById('adminServicesGrid').innerHTML =
+                        '<p style="color:var(--danger);">Could not load dashboard data. Is the API running?</p>';
+                });
+        })();
     </script>
 </body>
 </html>

@@ -213,21 +213,23 @@
            
             <div class="stats-mini">
                 <div class="stat-mini-card">
-                    <div class="stat-mini-value" id="totalInQueue">8</div>
+                    <div class="stat-mini-value" id="totalInQueue">0</div>
                     <div class="stat-mini-label">In Queue</div>
                 </div>
                 <div class="stat-mini-card">
-                    <div class="stat-mini-value" id="avgWaitTime">25</div>
+                    <div class="stat-mini-value" id="avgWaitTime">—</div>
                     <div class="stat-mini-label">Avg Wait (min)</div>
                 </div>
                 <div class="stat-mini-card">
-                    <div class="stat-mini-value" id="servedToday">47</div>
+                    <div class="stat-mini-value" id="servedToday">—</div>
                     <div class="stat-mini-label">Served Today</div>
                 </div>
             </div>
 
+            <p style="margin-bottom:16px;"><a href="admin-dashboard.html" style="color:var(--primary);font-weight:600;">← Back to dashboard</a></p>
+
             <!-- Serve Next Button -->
-            <button class="serve-btn" onclick="serveNext()">
+            <button class="serve-btn" type="button" id="serveNextBtn">
                 ✅ Serve Next Customer
             </button>
 
@@ -237,117 +239,117 @@
         </div>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
-        // Mock data
-        let queue = [
-            { id: 1, name: "John Doe", ticket: "A101", waitTime: 5 },
-            { id: 2, name: "Jane Smith", ticket: "A102", waitTime: 8 },
-            { id: 3, name: "Bob Johnson", ticket: "A103", waitTime: 12 },
-            { id: 4, name: "Alice Brown", ticket: "A104", waitTime: 15 },
-        
-        ];
-        
-        // Display queue
-        function displayQueue() {
-            let queueHtml = '';
-            
-            if (queue.length === 0) {
-                queueHtml = `
-                    <div class="empty-queue">
-                        <div style="font-size: 48px;">🎉</div>
-                        <p>Queue is empty! All customers served.</p>
-                    </div>
-                `;
-            } else {
-                queue.forEach((person, index) => {
-                    queueHtml += `
-                        <div class="queue-item">
-                            <div class="customer-info">
-                                <div class="position-circle">${index + 1}</div>
-                                <div class="customer-details">
-                                    <h3>${person.name}</h3>
-                                    <p>Ticket: ${person.ticket}</p>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center;">
-                                <span class="wait-badge">⏱️ ${person.waitTime} min</span>
-                                <div class="queue-actions">
-                                    <button class="icon-btn" onclick="moveUp(${index})" ${index === 0 ? 'disabled' : ''}>↑</button>
-                                    <button class="icon-btn" onclick="moveDown(${index})" ${index === queue.length-1 ? 'disabled' : ''}>↓</button>
-                                    <button class="icon-btn remove" onclick="removeFromQueue(${index})">✕</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
+        (function () {
+            var API = window.QS.api.getApiBase();
+            var params = new URLSearchParams(window.location.search);
+            var serviceIdFilter = params.get('service_id') || params.get('service');
+            var queueRows = [];
+
+            function waitMinutes(row) {
+                var pos = parseInt(row.position, 10) || 1;
+                var dur = parseInt(row.expected_duration, 10) || 0;
+                return pos * dur;
             }
-            
-            document.getElementById('queueList').innerHTML = queueHtml;
-            document.getElementById('totalInQueue').textContent = queue.length;
-            document.getElementById('avgWaitTime').textContent = queue.length > 0 ? Math.round(queue.reduce((sum, p) => sum + p.waitTime, 0) / queue.length) : 0;
-        }
-        
-        // Move person up
-        function moveUp(index) {
-            if (index > 0) {
-                [queue[index], queue[index-1]] = [queue[index-1], queue[index]];
-                queue.forEach((person, i) => {
-                    person.waitTime = 5 + (i * 3);
+
+            function displayQueue() {
+                var sorted = queueRows.slice().sort(function (a, b) {
+                    return (parseInt(a.position, 10) || 0) - (parseInt(b.position, 10) || 0);
                 });
-                displayQueue();
+                var html = '';
+                if (!sorted.length) {
+                    html = '<div class="empty-queue"><div style="font-size: 48px;">🎉</div><p>No customers waiting for this service.</p></div>';
+                } else {
+                    sorted.forEach(function (row, index) {
+                        var name = row.customer_name || ('User #' + row.user_id);
+                        var w = waitMinutes(row);
+                        html +=
+                            '<div class="queue-item">' +
+                            '<div class="customer-info">' +
+                            '<div class="position-circle">' + (index + 1) + '</div>' +
+                            '<div class="customer-details">' +
+                            '<h3>' + name + '</h3>' +
+                            '<p>Entry #' + row.entry_id + ' · User #' + row.user_id + '</p>' +
+                            '</div></div>' +
+                            '<div style="display:flex;align-items:center;">' +
+                            '<span class="wait-badge">⏱️ ' + w + ' min est.</span>' +
+                            '</div></div>';
+                    });
+                }
+                document.getElementById('queueList').innerHTML = html;
+                document.getElementById('totalInQueue').textContent = String(sorted.length);
+                if (!sorted.length) {
+                    document.getElementById('avgWaitTime').textContent = '—';
+                } else {
+                    var sum = sorted.reduce(function (acc, r) { return acc + waitMinutes(r); }, 0);
+                    document.getElementById('avgWaitTime').textContent = String(Math.round(sum / sorted.length));
+                }
             }
-        }
-        
-        // Move person down
-        function moveDown(index) {
-            if (index < queue.length - 1) {
-                [queue[index], queue[index+1]] = [queue[index+1], queue[index]];
-                queue.forEach((person, i) => {
-                    person.waitTime = 5 + (i * 3);
-                });
-                displayQueue();
+
+            function loadQueue() {
+                return fetch(API + '/queue')
+                    .then(function (r) { return r.json(); })
+                    .then(function (all) {
+                        if (!Array.isArray(all)) all = [];
+                        if (serviceIdFilter && !isNaN(parseInt(serviceIdFilter, 10))) {
+                            var sid = parseInt(serviceIdFilter, 10);
+                            queueRows = all.filter(function (row) { return parseInt(row.service_id, 10) === sid; });
+                        } else {
+                            queueRows = all;
+                        }
+                        displayQueue();
+                    });
             }
-        }
-        
-        // Remove from queue
-        function removeFromQueue(index) {
-            if (confirm(`Remove ${queue[index].name} from queue?`)) {
-                queue.splice(index, 1);
-                queue.forEach((person, i) => {
-                    person.waitTime = 5 + (i * 3);
-                });
-                displayQueue();
+
+            function loadServiceTitle() {
+                if (!serviceIdFilter || isNaN(parseInt(serviceIdFilter, 10))) {
+                    document.getElementById('serviceName').textContent = 'All services';
+                    return;
+                }
+                fetch(API + '/services')
+                    .then(function (r) { return r.json(); })
+                    .then(function (services) {
+                        var sid = parseInt(serviceIdFilter, 10);
+                        var s = (services || []).find(function (x) { return parseInt(x.service_id, 10) === sid; });
+                        document.getElementById('serviceName').textContent = s ? s.service_name : ('Service #' + sid);
+                    })
+                    .catch(function () {
+                        document.getElementById('serviceName').textContent = 'Service #' + serviceIdFilter;
+                    });
             }
-        }
-        
-        // Serve next customer
-        function serveNext() {
-            if (queue.length > 0) {
-                alert(`✅ Now serving: ${queue[0].name} (Ticket: ${queue[0].ticket})`);
-                queue.shift();
-                queue.forEach((person, i) => {
-                    person.waitTime = 5 + (i * 3);
-                });
-                displayQueue();
-            } else {
-                alert('🎉 Queue is empty! No customers to serve.');
-            }
-        }
-        
-        // Get service from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const service = urlParams.get('service');
-        if (service) {
-            const serviceNames = {
-                'bank': 'Bank Teller',
-                'support': 'Customer Support',
-                'pharmacy': 'Pharmacy Pickup',
-                'tech': 'Technical Support'
-            };
-            document.getElementById('serviceName').textContent = serviceNames[service] || 'Bank Teller';
-        }
-        
-        displayQueue();
+
+            document.getElementById('serveNextBtn').addEventListener('click', function () {
+                var body = {};
+                if (serviceIdFilter && !isNaN(parseInt(serviceIdFilter, 10))) {
+                    body.service_id = parseInt(serviceIdFilter, 10);
+                }
+                fetch(API + '/queue/serve-next', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                })
+                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                    .then(function (x) {
+                        if (!x.ok) {
+                            alert(x.d.message || 'Could not serve next.');
+                            return;
+                        }
+                        var u = x.d.served && x.d.served.user_id;
+                        alert('Served next customer (user #' + u + ').');
+                        return loadQueue();
+                    })
+                    .catch(function () {
+                        alert('Could not connect to server.');
+                    });
+            });
+
+            loadServiceTitle();
+            loadQueue().catch(function () {
+                document.getElementById('queueList').innerHTML =
+                    '<p style="color:var(--danger);padding:20px;">Could not load queue.</p>';
+            });
+        })();
     </script>
 </body>
 </html>

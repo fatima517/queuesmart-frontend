@@ -4,22 +4,24 @@ const Queue = require('../models/queueModel')
 const Service = require('../models/serviceModel')
 const Notification = require('../models/notificationModel')
 const { estimateWaitTime } = require('../utils/waitTimeEstimator')
+const {
+  validateJoinQueueBody,
+  validateUserIdParam,
+  parseOptionalServiceFilter
+} = require('../validators/queueValidator')
 
 const joinQueue = (req, res) => {
-  const { user_id, service_id } = req.body
+  const body = req.body || {}
+  const user_id = body.user_id !== undefined && body.user_id !== null ? body.user_id : body.userId
+  const service_id = body.service_id !== undefined && body.service_id !== null ? body.service_id : body.serviceId
 
-  if (!user_id || !service_id) {
-    return res.status(400).json({ message: 'user_id and service_id are required' })
-  }
-  if (typeof user_id !== 'number' && isNaN(parseInt(user_id))) {
-    return res.status(400).json({ message: 'user_id must be a number' })
-  }
-  if (typeof service_id !== 'number' && isNaN(parseInt(service_id))) {
-    return res.status(400).json({ message: 'service_id must be a number' })
+  const joinErr = validateJoinQueueBody({ user_id, service_id })
+  if (joinErr) {
+    return res.status(400).json({ message: joinErr.message })
   }
 
-  const uid = parseInt(user_id)
-  const sid = parseInt(service_id)
+  const uid = parseInt(user_id, 10)
+  const sid = parseInt(service_id, 10)
 
   Service.getById(sid, (err, serviceResults) => {
     if (err) return res.status(500).json({ message: 'Error joining queue' })
@@ -62,7 +64,15 @@ const joinQueue = (req, res) => {
 
           res.status(201).json({
             message: 'Joined queue',
-            queueEntry: { entry_id, queue_id, user_id: uid, service_id: sid, position, waitTime, status: 'waiting' }
+            queueEntry: {
+              entry_id,
+              queue_id,
+              user_id: uid,
+              service_id: sid,
+              position,
+              waitTime,
+              status: 'waiting'
+            }
           })
         })
       })
@@ -71,8 +81,10 @@ const joinQueue = (req, res) => {
 }
 
 const getQueueStatus = (req, res) => {
-  const user_id = parseInt(req.params.userId)
-  if (isNaN(user_id)) return res.status(400).json({ message: 'userId is required' })
+  const paramErr = validateUserIdParam(req.params.userId)
+  if (paramErr) return res.status(400).json({ message: paramErr.message })
+
+  const user_id = parseInt(req.params.userId, 10)
 
   QueueEntry.getByUserId(user_id, (err, entries) => {
     if (err) return res.status(500).json({ message: 'Error fetching queue status' })
@@ -126,8 +138,10 @@ const getQueueStatus = (req, res) => {
 }
 
 const leaveQueue = (req, res) => {
-  const user_id = parseInt(req.params.userId)
-  if (isNaN(user_id)) return res.status(400).json({ message: 'userId is required' })
+  const paramErr = validateUserIdParam(req.params.userId)
+  if (paramErr) return res.status(400).json({ message: paramErr.message })
+
+  const user_id = parseInt(req.params.userId, 10)
 
   QueueEntry.getByUserId(user_id, (err, entries) => {
     if (err) return res.status(500).json({ message: 'Error leaving queue' })
@@ -145,10 +159,12 @@ const leaveQueue = (req, res) => {
 const getQueue = (req, res) => {
   const query = `
     SELECT qe.entry_id, qe.queue_id, qe.user_id, qe.position, qe.join_time, qe.status,
-           s.service_id, s.service_name, s.expected_duration, s.priority_level
+           s.service_id, s.service_name, s.expected_duration, s.priority_level,
+           COALESCE(p.full_name, CONCAT('User #', qe.user_id)) AS customer_name
     FROM queue_entries qe
     JOIN queues q ON qe.queue_id = q.queue_id
     JOIN services s ON q.service_id = s.service_id
+    LEFT JOIN profiles p ON p.user_id = qe.user_id
     WHERE qe.status = 'waiting'
     ORDER BY qe.queue_id ASC, qe.position ASC
   `
@@ -159,16 +175,26 @@ const getQueue = (req, res) => {
 }
 
 const serveNext = (req, res) => {
-  const query = `
+  const filterServiceId = parseOptionalServiceFilter(req.body)
+
+  let query = `
     SELECT qe.entry_id, qe.queue_id, qe.user_id, qe.position,
            q.service_id
     FROM queue_entries qe
     JOIN queues q ON qe.queue_id = q.queue_id
     WHERE qe.status = 'waiting'
+  `
+  const params = []
+  if (filterServiceId !== null) {
+    query += ' AND q.service_id = ?'
+    params.push(filterServiceId)
+  }
+  query += `
     ORDER BY qe.queue_id ASC, qe.position ASC
     LIMIT 1
   `
-  db.query(query, (err, results) => {
+
+  db.query(query, params, (err, results) => {
     if (err) return res.status(500).json({ message: 'Error serving next in queue' })
     if (results.length === 0) return res.status(404).json({ message: 'No one in queue' })
 
