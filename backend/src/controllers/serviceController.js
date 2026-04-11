@@ -1,86 +1,100 @@
-// src/controllers/serviceController.js
-const store = require('../data/store')
+const Service = require('../models/serviceModel');
 
 // List all services
 const listServices = (req, res) => {
-  try {
-    res.status(200).json(store.services)
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching services' })
-  }
-}
+  Service.getAll((err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching services' });
+    }
+    res.status(200).json(results);
+  });
+};
 
 // Create a new service
 const createService = (req, res) => {
-  try {
-    const { name, description, expectedDuration, priorityLevel } = req.body
+  const { business_id = 1, name, description, expectedDuration, priorityLevel } = req.body;
 
-    // Validation
-    if (!name || !description || !expectedDuration || !priorityLevel) {
-      return res.status(400).json({ message: 'All fields are required' })
-    }
-    if (typeof name !== 'string') {
-      return res.status(400).json({ message: 'Name must be a string' })
-    }
-    if (typeof expectedDuration !== 'number') {
-      return res.status(400).json({ message: 'Expected duration must be a number' })
-    }
-    if (name.length > 50) {
-      return res.status(400).json({ message: 'Name must be under 50 characters' })
-    }
-    if (description.length > 200) {
-      return res.status(400).json({ message: 'Description must be under 200 characters' })
-    }
-
-    const newService = {
-      id: String(store.services.length + 1),
-      name,
-      description,
-      expectedDuration,
-      priorityLevel
-    }
-
-    store.services.push(newService)
-    res.status(201).json({ message: 'Service created', service: newService })
-
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating service' })
+  if (!name || !description || !expectedDuration || !priorityLevel) {
+    return res.status(400).json({ message: 'All fields are required' });
   }
-}
+
+  if (typeof name !== 'string' || name.length > 50) {
+    return res.status(400).json({ message: 'Name must be under 50 characters' });
+  }
+
+  if (typeof description !== 'string' || description.length > 200) {
+    return res.status(400).json({ message: 'Description must be under 200 characters' });
+  }
+
+  if (typeof expectedDuration !== 'number') {
+    return res.status(400).json({ message: 'Expected duration must be a number' });
+  }
+
+  Service.create(
+    business_id,
+    name,
+    description,
+    expectedDuration,
+    priorityLevel,
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error creating service' });
+      }
+
+      res.status(201).json({
+        message: 'Service created',
+        service: {
+          id: result.insertId,
+          name,
+          description,
+          expectedDuration,
+          priorityLevel
+        }
+      });
+    }
+  );
+};
 
 // Update an existing service
 const updateService = (req, res) => {
-  try {
-    const { id } = req.params
-    const { name, description, expectedDuration, priorityLevel } = req.body
+  const { id } = req.params;
+  const { name, description, expectedDuration, priorityLevel } = req.body;
 
-    const service = store.services.find(s => s.id === id)
-
-    if (!service) {
-      return res.status(404).json({ message: 'Service not found' })
+  Service.getById(id, (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching service' });
     }
 
-    // Validation
-    if (name && name.length > 50) {
-      return res.status(400).json({ message: 'Name must be under 50 characters' })
-    }
-    if (description && description.length > 200) {
-      return res.status(400).json({ message: 'Description must be under 200 characters' })
-    }
-    if (expectedDuration && typeof expectedDuration !== 'number') {
-      return res.status(400).json({ message: 'Expected duration must be a number' })
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Service not found' });
     }
 
-    if (name) service.name = name
-    if (description) service.description = description
-    if (expectedDuration) service.expectedDuration = expectedDuration
-    if (priorityLevel) service.priorityLevel = priorityLevel
+    const existing = results[0];
 
-    res.status(200).json({ message: 'Service updated', service })
+    Service.updateById(
+      id,
+      name || existing.service_name,
+      description || existing.description,
+      expectedDuration || existing.expected_duration,
+      priorityLevel || existing.priority_level,
+      (err) => {
+        if (err) {
+          return res.status(500).json({ message: 'Error updating service' });
+        }
 
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating service' })
-  }
-}
+        res.status(200).json({
+          message: 'Service updated',
+          service: {
+            id,
+            name: name || existing.service_name,
+            description: description || existing.description,
+            expectedDuration: expectedDuration || existing.expected_duration,
+            priorityLevel: priorityLevel || existing.priority_level
+          }
+        });
+      }
+    );
+  });
+};
 
-module.exports = { listServices, createService, updateService }
+module.exports = { listServices, createService, updateService };
