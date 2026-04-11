@@ -20,9 +20,10 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/history', historyRoutes)
 
 const PORT = 3000
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`)
+
+app.startServer = (port = PORT) => {
+  return app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`)
   })
 }
 
