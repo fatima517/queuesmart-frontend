@@ -122,7 +122,7 @@ async function main() {
   log('starting API (background)')
   const logFile = path.join(backendRoot, 'server-setup.log')
   const out = fs.openSync(logFile, 'a')
-  const child = spawn(process.execPath, ['server.js'], {
+  const child = spawn(process.execPath, ['listen.js'], {
     cwd: backendRoot,
     detached: true,
     stdio: ['ignore', out, out],
