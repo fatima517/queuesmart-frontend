@@ -1,3 +1,4 @@
+// src/controllers/authController.js
 const bcrypt = require('bcrypt');
 const User = require('../models/userModel');
 const Profile = require('../models/profileModel');
@@ -6,7 +7,6 @@ const Profile = require('../models/profileModel');
 const register = (req, res) => {
   const { name, email, password, phone = null, preferences = null } = req.body;
 
-  // Validation
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'All fields are required' });
   }
@@ -30,7 +30,6 @@ const register = (req, res) => {
 
   const normalizedEmail = email.toLowerCase();
 
-  // Check if user exists
   User.findByEmail(normalizedEmail, async (err, results) => {
     if (err) {
       return res.status(500).json({ message: 'Database error' });
@@ -43,7 +42,6 @@ const register = (req, res) => {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
       User.create(normalizedEmail, hashedPassword, 'user', (err, result) => {
         if (err) {
           return res.status(500).json({ message: 'Error creating user' });
@@ -51,7 +49,6 @@ const register = (req, res) => {
 
         const userId = result.insertId;
 
-        // Create profile
         Profile.create(userId, name, phone, preferences, (err) => {
           if (err) {
             return res.status(500).json({ message: 'Error creating profile' });
@@ -102,7 +99,6 @@ const login = (req, res) => {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
-      // Get profile
       Profile.getByUserId(user.user_id, (err, profileResults) => {
         if (err) {
           return res.status(500).json({ message: 'Error fetching profile' });
