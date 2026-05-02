@@ -6,7 +6,7 @@ const getUserHistory = (req, res) => {
   if (isNaN(user_id)) return res.status(400).json({ message: 'User ID is required' })
 
   const query = `
-    SELECT qe.entry_id, qe.user_id, qe.position, qe.join_time, qe.status,
+    SELECT qe.entry_id, qe.user_id, qe.position, qe.join_time, qe.completed_at, qe.wait_minutes, qe.status,
            q.queue_id, q.service_id,
            s.service_name, s.expected_duration
     FROM queue_entries qe

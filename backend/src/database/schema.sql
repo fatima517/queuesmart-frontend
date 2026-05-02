@@ -1,6 +1,7 @@
 CREATE DATABASE IF NOT EXISTS queuesmart;
 USE queuesmart;
 
+DROP TABLE IF EXISTS queue_history;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS queue_entries;
 DROP TABLE IF EXISTS queues;
@@ -60,13 +61,15 @@ CREATE TABLE queues (
         ON UPDATE CASCADE
 );
 
--- 5. QueueEntry
+-- 5. QueueEntry (current row per user per queue; status tracks lifecycle)
 CREATE TABLE queue_entries (
     entry_id INT AUTO_INCREMENT PRIMARY KEY,
     queue_id INT NOT NULL,
     user_id INT NOT NULL,
     position INT NOT NULL,
     join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL DEFAULT NULL,
+    wait_minutes DECIMAL(10,2) NULL DEFAULT NULL,
     status ENUM('waiting', 'served', 'canceled') NOT NULL DEFAULT 'waiting',
     CONSTRAINT fk_queue_entries_queue
         FOREIGN KEY (queue_id) REFERENCES queues(queue_id)
@@ -80,7 +83,36 @@ CREATE TABLE queue_entries (
     CONSTRAINT uq_queue_position UNIQUE (queue_id, position)
 );
 
--- 6. Notification / History
+-- 6. Queue history (append-only snapshot when a visit ends — used for admin reporting)
+CREATE TABLE queue_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    entry_id INT NOT NULL,
+    queue_id INT NOT NULL,
+    user_id INT NOT NULL,
+    service_id INT NOT NULL,
+    join_time TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP NOT NULL,
+    final_status ENUM('served', 'canceled') NOT NULL,
+    wait_minutes DECIMAL(10,2) NULL DEFAULT NULL,
+    CONSTRAINT fk_qhist_entry
+        FOREIGN KEY (entry_id) REFERENCES queue_entries(entry_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_qhist_queue
+        FOREIGN KEY (queue_id) REFERENCES queues(queue_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_qhist_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_qhist_service
+        FOREIGN KEY (service_id) REFERENCES services(service_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+-- 7. Notification
 CREATE TABLE notifications (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

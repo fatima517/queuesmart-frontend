@@ -1,0 +1,20 @@
+Entry ID,User ID,Customer Name,Email,Service ID,Service Name,Priority,Expected Duration (min),Join Time,Completed At,Status,Position,Actual Wait (min)
+1,3,Alex Rivera,alex.customer@queuesmart.local,1,General Consultation,medium,10,2026-04-28T09:00:00.000Z,2026-04-28T09:14:00.000Z,served,1,14
+2,4,Jamie Chen,jamie.customer@queuesmart.local,1,General Consultation,medium,10,2026-04-28T10:30:00.000Z,2026-04-28T10:36:00.000Z,canceled,2,6
+3,5,Sam Okonkwo,sam.customer@queuesmart.local,2,Express Check-in,high,5,2026-04-29T08:45:00.000Z,2026-04-29T08:52:00.000Z,served,1,7
+4,5,Sam Okonkwo,sam.customer@queuesmart.local,1,General Consultation,medium,10,2026-05-01T07:00:00.000Z,,waiting,3,
+
+
+SUMMARY
+Total Entries,4
+Unique Customers,3
+Served,2
+Canceled,1
+Waiting,1
+Avg Expected Wait — Served Only (min),7.5
+Avg Actual Wait — Served Only (min),10.50
+
+SERVICE ACTIVITY
+Service ID,Service Name,Priority,Expected Duration (min),Total Entries,Served,Canceled,Waiting,Avg Actual Wait Served (min)
+1,General Consultation,medium,10,3,1,1,1,14.00
+2,Express Check-in,high,5,1,1,0,0,7.00

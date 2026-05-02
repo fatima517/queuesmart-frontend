@@ -106,6 +106,10 @@
     }
   }
 
+  function isAdminRole(role) {
+    return role === 'admin' || role === 'administrator'
+  }
+
   global.QS = global.QS || {}
   global.QS.api = {
     getApiBase: getApiBase,
@@ -117,6 +121,7 @@
     joinQueuePayload: joinQueuePayload,
     mapQueueEntryForUi: mapQueueEntryForUi,
     mapHistoryRow: mapHistoryRow,
-    getCurrentUser: getCurrentUser
+    getCurrentUser: getCurrentUser,
+    isAdminRole: isAdminRole
   }
 })(typeof window !== 'undefined' ? window : globalThis)

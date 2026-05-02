@@ -167,7 +167,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 820px;
+            min-width: 1040px;
         }
 
         th {
@@ -249,6 +249,61 @@
             margin-bottom: 8px;
         }
 
+        .service-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .service-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid var(--primary);
+        }
+
+        .service-card h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .service-card .meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+
+        .service-card dl {
+            margin: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 12px;
+            font-size: 13px;
+        }
+
+        .service-card dt {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .service-card dd {
+            margin: 0;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .muted-note {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: -8px 0 20px;
+        }
+
         .alert {
             display: none;
             margin-bottom: 20px;
@@ -301,9 +356,10 @@
         <div class="admin-header">
             <div>
                 <h1>Queue Activity Reports</h1>
-                <p>Preview queue performance, filter activity, and export records for administrators.</p>
+                <p>Customer participation, service-level activity, wait-time analytics, and CSV or PDF exports for administrators.</p>
             </div>
             <div class="btn-row">
+                <a class="btn btn-outline" href="submission-example-queuesmart-report.csv" download style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Sample CSV</a>
                 <button class="btn btn-outline" onclick="location.href='admin-dashboard.html'">Back to Dashboard</button>
             </div>
         </div>
@@ -336,10 +392,15 @@
             </div>
 
             <div id="statsSection" style="display: none;">
+                <p class="muted-note">Actual wait times are recorded when a visit ends (served or canceled). Expected wait is the service default for served visits only.</p>
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value" id="statTotal">-</div>
                         <div class="stat-label">Total Entries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statUnique">-</div>
+                        <div class="stat-label">Unique Customers</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="statServed">-</div>
@@ -350,26 +411,32 @@
                         <div class="stat-label">Canceled</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="statAvgWait">-</div>
-                        <div class="stat-label">Avg Wait (min)</div>
+                        <div class="stat-value" id="statAvgActual">-</div>
+                        <div class="stat-label">Avg Actual Wait (served)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statAvgExpected">-</div>
+                        <div class="stat-label">Avg Expected (served)</div>
                     </div>
                 </div>
+                <div id="serviceSummarySection"></div>
             </div>
 
             <div id="tableSection">
                 <div class="empty-state">
                     <h2>No report preview yet</h2>
-                    <p>Choose a date range or service, then preview the report.</p>
+                    <p>Adjust filters and click Preview, or load the default snapshot from the server.</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="../../js/api.js"></script>
     <script>
-        const API = 'http://localhost:3000/api';
-        const currentUser = JSON.parse(sessionStorage.getItem('qs_user') || 'null');
+        const API = window.QS.api.getApiBase();
+        const currentUser = window.QS.api.getCurrentUser();
 
-        if (!currentUser || currentUser.role !== 'admin') {
+        if (!currentUser || !currentUser.id || !window.QS.api.isAdminRole(currentUser.role)) {
             window.location.href = '../auth/login.html';
         }
 
@@ -388,7 +455,7 @@
         function adminHeaders(extraHeaders = {}) {
             return {
                 ...extraHeaders,
-                'x-user-id': currentUser.id
+                'x-user-id': String(currentUser.id)
             };
         }
 
@@ -426,7 +493,7 @@
         }
 
         function formatDate(value) {
-            if (!value) return '-';
+            if (!value) return '—';
             return new Date(value).toLocaleString();
         }
 
@@ -445,6 +512,34 @@
             return `<span class="status-badge ${escapeHtml(normalized)}">${escapeHtml(status || 'Pending')}</span>`;
         }
 
+        function renderServiceSummary(services) {
+            const el = document.getElementById('serviceSummarySection');
+            if (!services || !services.length) {
+                el.innerHTML = '';
+                return;
+            }
+            el.innerHTML =
+                '<div class="section-title"><h2>Service activity</h2><span class="record-count">Per service</span></div>' +
+                '<div class="service-cards">' +
+                services
+                    .map(
+                        s => `
+                <article class="service-card">
+                    <h3>${escapeHtml(s.service_name || '')}</h3>
+                    <div class="meta">Priority ${escapeHtml(s.priority_level || '')} · Est. ${escapeHtml(String(s.expected_duration ?? ''))} min · Service #${escapeHtml(String(s.service_id ?? ''))}</div>
+                    <dl>
+                        <dt>Total entries</dt><dd>${escapeHtml(String(s.total_entries ?? 0))}</dd>
+                        <dt>Served</dt><dd>${escapeHtml(String(s.served ?? 0))}</dd>
+                        <dt>Canceled</dt><dd>${escapeHtml(String(s.canceled ?? 0))}</dd>
+                        <dt>Waiting</dt><dd>${escapeHtml(String(s.waiting ?? 0))}</dd>
+                        <dt>Avg actual (served)</dt><dd>${s.avg_actual_wait_minutes_served != null ? escapeHtml(String(s.avg_actual_wait_minutes_served)) + ' min' : '—'}</dd>
+                    </dl>
+                </article>`
+                    )
+                    .join('') +
+                '</div>';
+        }
+
         function renderTable(rows) {
             if (!rows.length) {
                 document.getElementById('tableSection').innerHTML = `
@@ -456,23 +551,31 @@
                 return;
             }
 
-            const tableRows = rows.map(row => `
+            const tableRows = rows
+                .map(
+                    row => `
                 <tr>
                     <td>#${escapeHtml(row.entry_id)}</td>
                     <td>
                         <div class="customer-name">${escapeHtml(row.customer_name || '-')}</div>
                         <div>${escapeHtml(row.email || '-')}</div>
                     </td>
-                    <td>${escapeHtml(row.service_name || '-')}</td>
+                    <td>
+                        <div>${escapeHtml(row.service_name || '-')}</div>
+                        <div style="font-size:12px;color:var(--text-muted);">${escapeHtml((row.service_description || '').slice(0, 80))}${(row.service_description || '').length > 80 ? '…' : ''}</div>
+                    </td>
                     <td>${escapeHtml(formatDate(row.join_time))}</td>
+                    <td>${escapeHtml(formatDate(row.completed_at))}</td>
+                    <td>${row.wait_minutes != null ? escapeHtml(String(row.wait_minutes)) : '—'}</td>
                     <td>${statusBadge(row.status)}</td>
                     <td>${escapeHtml(row.position ?? '-')}</td>
-                </tr>
-            `).join('');
+                </tr>`
+                )
+                .join('');
 
             document.getElementById('tableSection').innerHTML = `
                 <div class="section-title">
-                    <h2>Entry Details</h2>
+                    <h2>Customers &amp; queue participation</h2>
                     <span class="record-count">${rows.length} records</span>
                 </div>
                 <div class="table-container">
@@ -482,9 +585,11 @@
                                 <th>ID</th>
                                 <th>Customer</th>
                                 <th>Service</th>
-                                <th>Join Time</th>
+                                <th>Join</th>
+                                <th>Completed</th>
+                                <th>Wait (min)</th>
                                 <th>Status</th>
-                                <th>Position</th>
+                                <th>Pos</th>
                             </tr>
                         </thead>
                         <tbody>${tableRows}</tbody>
@@ -505,13 +610,18 @@
                 const data = await res.json();
                 const stats = data.stats || {};
                 const rows = Array.isArray(data.rows) ? data.rows : [];
+                const serviceSummary = Array.isArray(data.serviceSummary) ? data.serviceSummary : [];
 
                 document.getElementById('statTotal').textContent = stats.total ?? 0;
+                document.getElementById('statUnique').textContent = stats.uniqueCustomers ?? 0;
                 document.getElementById('statServed').textContent = stats.served ?? 0;
                 document.getElementById('statCanceled').textContent = stats.canceled ?? 0;
-                document.getElementById('statAvgWait').textContent = stats.avgWait ?? 0;
+                document.getElementById('statAvgActual').textContent =
+                    stats.avgActualWaitMinutesServed != null ? stats.avgActualWaitMinutesServed : '—';
+                document.getElementById('statAvgExpected').textContent = stats.avgExpectedWaitMinutes ?? '—';
                 document.getElementById('statsSection').style.display = '';
 
+                renderServiceSummary(serviceSummary);
                 renderTable(rows);
             } catch (error) {
                 showError('Report preview could not be generated. Make sure the QueueSmart server is running.');
@@ -549,7 +659,9 @@
             downloadFile('pdf');
         }
 
-        loadServices();
+        loadServices().then(function () {
+            previewReport();
+        });
     </script>
 </body>
 </html>

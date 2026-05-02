@@ -208,12 +208,30 @@ describe('QueueEntry model', () => {
     expect(cb).toHaveBeenCalled()
   })
 
-  test('updateStatus', () => {
+  test('updateStatus terminal runs update then history insert', () => {
     const cb = jest.fn()
     QueueEntry.updateStatus(1, 'served', cb)
-    expect(db.query.mock.calls[0][1]).toEqual(['served', 1])
-    db.query.mock.calls[0][2](null)
-    expect(cb).toHaveBeenCalled()
+    expect(db.query).toHaveBeenCalled()
+    db.query.mock.calls[0][2](null, { affectedRows: 1 })
+    expect(db.query).toHaveBeenCalledTimes(2)
+    db.query.mock.calls[1][2](null)
+    expect(cb).toHaveBeenCalledWith(null, { affectedRows: 1 })
+  })
+
+  test('updateStatus terminal skips history when no waiting row updated', () => {
+    const cb = jest.fn()
+    QueueEntry.updateStatus(9, 'canceled', cb)
+    db.query.mock.calls[0][2](null, { affectedRows: 0 })
+    expect(db.query).toHaveBeenCalledTimes(1)
+    expect(cb).toHaveBeenCalledWith(null, { affectedRows: 0 })
+  })
+
+  test('updateStatus non-terminal uses simple update', () => {
+    const cb = jest.fn()
+    QueueEntry.updateStatus(1, 'waiting', cb)
+    expect(db.query.mock.calls[0][1]).toEqual(['waiting', 1])
+    db.query.mock.calls[0][2](null, { affectedRows: 1 })
+    expect(cb).toHaveBeenCalledWith(null, { affectedRows: 1 })
   })
 
   test('deleteById', () => {

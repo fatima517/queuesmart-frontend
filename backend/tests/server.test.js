@@ -37,9 +37,10 @@ describe('server.js', () => {
 
   test('startServer uses default PORT when port is omitted', () => {
     const fake = { on: jest.fn(), close: jest.fn() }
-    const listenSpy = jest.spyOn(app, 'listen').mockImplementation((port, cb) => {
+    const listenSpy = jest.spyOn(app, 'listen').mockImplementation((port, host, cb) => {
       expect(port).toBe(3000)
-      if (cb) cb()
+      expect(host).toBe('127.0.0.1')
+      if (typeof cb === 'function') cb()
       return fake
     })
     app.startServer()
