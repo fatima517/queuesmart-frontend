@@ -16,6 +16,10 @@
         }
 
         .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
             padding: 32px 40px;
             border-bottom: 1px solid var(--border);
             background: var(--surface);
@@ -147,13 +151,42 @@
             gap: 10px;
             margin-top: 20px;
         }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .header-actions .btn {
+            width: auto;
+        }
+
+        @media (max-width: 700px) {
+            .admin-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .header-actions,
+            .header-actions .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="admin-wrapper">
         <div class="admin-header">
-            <h1>Welcome back, Admin</h1>
-            <p>Manage your queues and services from one central dashboard</p>
+            <div>
+                <h1>Welcome back, Admin</h1>
+                <p>Manage your queues and services from one central dashboard</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="location.href='service-management.html'">Services</button>
+                <button class="btn btn-primary" onclick="location.href='reports.html'">Reports</button>
+            </div>
         </div>
         
         <div class="admin-content">
@@ -189,6 +222,12 @@
     <script src="../../js/api.js"></script>
     <script>
         (function () {
+            var currentUser = window.QS.api.getCurrentUser();
+            if (!currentUser || currentUser.role !== 'admin') {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+
             var API = window.QS.api.getApiBase();
 
             function avgWaitMinutes(queueRows) {
