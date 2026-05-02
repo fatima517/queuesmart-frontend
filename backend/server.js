@@ -3,6 +3,7 @@ const express = require('express')
 const cors = require('cors')
 const app = express()
 const reportRoutes = require('./src/routes/reportRoutes')
+const smartRoutes  = require('./src/routes/smartRoutes')
 
 app.use(cors())
 app.use(express.json())
@@ -20,6 +21,7 @@ app.use('/api/queue', queueRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/history', historyRoutes)
 app.use('/api/reports', reportRoutes)
+app.use('/api/smart',   smartRoutes)
 
 const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || '127.0.0.1'

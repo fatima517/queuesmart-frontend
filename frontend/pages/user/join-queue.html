@@ -64,6 +64,20 @@
         .action-buttons .btn { flex: 1; }
         .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
         .btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+        .smart-banner {
+            display: none;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 1.5px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .smart-banner-inner { display: flex; align-items: flex-start; gap: 14px; }
+        .smart-banner-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+        .smart-banner-body { flex: 1; }
+        .smart-banner-title { font-weight: 700; color: var(--primary); font-size: 15px; margin-bottom: 6px; }
+        .smart-banner-reason { font-size: 14px; color: var(--text-secondary); margin-bottom: 14px; }
+        .smart-select-btn { width: auto; padding: 8px 18px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -83,6 +97,18 @@
         <div class="join-header">
             <h1>Join a Queue</h1>
             <p>Select a service and join the queue</p>
+        </div>
+
+        <!-- Smart Recommendation Banner -->
+        <div class="smart-banner" id="smartBanner">
+            <div class="smart-banner-inner">
+                <span class="smart-banner-icon">💡</span>
+                <div class="smart-banner-body">
+                    <p class="smart-banner-title">Smart Recommendation</p>
+                    <p class="smart-banner-reason" id="smartReason"></p>
+                    <button class="btn btn-primary smart-select-btn" id="smartSelectBtn">Select this service</button>
+                </div>
+            </div>
         </div>
 
         <div class="service-select-card">
@@ -249,7 +275,31 @@
                 updateButtons();
             }
 
-            init();
+            async function loadRecommendation() {
+                try {
+                    const res = await fetch(API + '/smart/recommend');
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const rec = data.recommendation;
+                    if (!rec) return;
+
+                    document.getElementById('smartReason').textContent = rec.reason;
+                    document.getElementById('smartBanner').style.display = '';
+
+                    document.getElementById('smartSelectBtn').addEventListener('click', function () {
+                        const match = services.find(function (s) { return String(s.id) === String(rec.service_id); });
+                        if (!match) return;
+                        selectedService = { id: match.id, name: match.name, duration: match.expectedDuration || 0 };
+                        renderOptions();
+                        updateButtons();
+                        document.getElementById('smartBanner').style.display = 'none';
+                    });
+                } catch (_) {}
+            }
+
+            init().then(function () {
+                if (!currentQueue) loadRecommendation();
+            });
         })();
     </script>
 </body>
