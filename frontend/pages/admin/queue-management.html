@@ -247,6 +247,23 @@
             var serviceIdFilter = params.get('service_id') || params.get('service');
             var queueRows = [];
 
+            function normalizeQueueRow(row) {
+                var entryId = row.entry_id != null ? row.entry_id : row.entryId;
+                var userId = row.user_id != null ? row.user_id : row.userId;
+                var serviceId = row.service_id != null ? row.service_id : row.serviceId;
+                var customerName = row.customer_name != null ? row.customer_name : row.customerName;
+                var expectedDuration = row.expected_duration != null ? row.expected_duration : row.expectedDuration;
+
+                return Object.assign({}, row, {
+                    entry_id: entryId,
+                    user_id: userId,
+                    service_id: serviceId,
+                    customer_name: customerName || (userId != null ? 'User #' + userId : 'Unknown customer'),
+                    expected_duration: expectedDuration,
+                    position: row.position != null ? row.position : 1
+                });
+            }
+
             function waitMinutes(row) {
                 var pos = parseInt(row.position, 10) || 1;
                 var dur = parseInt(row.expected_duration, 10) || 0;
@@ -259,10 +276,12 @@
                 });
                 var html = '';
                 if (!sorted.length) {
-                    html = '<div class="empty-queue"><div style="font-size: 48px;">🎉</div><p>No customers waiting for this service.</p></div>';
+                    html = '<div class="empty-queue"><p>No customers waiting for this service.</p></div>';
                 } else {
                     sorted.forEach(function (row, index) {
-                        var name = row.customer_name || ('User #' + row.user_id);
+                        var name = row.customer_name;
+                        var entryLabel = row.entry_id != null ? row.entry_id : '—';
+                        var userLabel = row.user_id != null ? row.user_id : '—';
                         var w = waitMinutes(row);
                         html +=
                             '<div class="queue-item">' +
@@ -270,7 +289,7 @@
                             '<div class="position-circle">' + (index + 1) + '</div>' +
                             '<div class="customer-details">' +
                             '<h3>' + name + '</h3>' +
-                            '<p>Entry #' + row.entry_id + ' · User #' + row.user_id + '</p>' +
+                            '<p>Entry #' + entryLabel + ' · User #' + userLabel + '</p>' +
                             '</div></div>' +
                             '<div style="display:flex;align-items:center;">' +
                             '<span class="wait-badge">⏱️ ' + w + ' min est.</span>' +
@@ -292,6 +311,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (all) {
                         if (!Array.isArray(all)) all = [];
+                        all = all.map(normalizeQueueRow);
                         if (serviceIdFilter && !isNaN(parseInt(serviceIdFilter, 10))) {
                             var sid = parseInt(serviceIdFilter, 10);
                             queueRows = all.filter(function (row) { return parseInt(row.service_id, 10) === sid; });

@@ -24,16 +24,20 @@
 
   function mapService(row) {
     if (!row) return null
+    var id = row.service_id != null ? row.service_id : row.id
+    var name = row.service_name != null ? row.service_name : row.name
+    var duration = row.expected_duration != null ? row.expected_duration : row.expectedDuration
+    var priority = row.priority_level != null ? row.priority_level : row.priorityLevel
     return {
-      id: row.service_id,
-      service_id: row.service_id,
-      name: row.service_name,
-      service_name: row.service_name,
+      id: id,
+      service_id: id,
+      name: name,
+      service_name: name,
       description: row.description,
-      expectedDuration: row.expected_duration,
-      expected_duration: row.expected_duration,
-      priorityLevel: row.priority_level,
-      priority_level: row.priority_level
+      expectedDuration: duration,
+      expected_duration: duration,
+      priorityLevel: priority,
+      priority_level: priority
     }
   }
 
@@ -70,7 +74,12 @@
   }
 
   function joinQueuePayload(userId, serviceId) {
-    return { user_id: userId, service_id: serviceId }
+    return {
+      user_id: userId,
+      service_id: serviceId,
+      userId: userId,
+      serviceId: serviceId
+    }
   }
 
   function mapQueueEntryForUi(entry, serviceRow) {

@@ -223,7 +223,8 @@
     <script>
         (function () {
             var currentUser = window.QS.api.getCurrentUser();
-            if (!currentUser || currentUser.role !== 'admin') {
+            var isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'administrator');
+            if (!isAdmin) {
                 window.location.href = '../auth/login.html';
                 return;
             }
